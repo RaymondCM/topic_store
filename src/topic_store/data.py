@@ -6,15 +6,19 @@
 from __future__ import absolute_import, division, print_function
 
 import datetime
+import pickle
 
 import bson
 import genpy
+import pathlib
 import roslib.message
 import rospy
 from genpy import Message as ROSMessage
 
+__all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
 
-class TypeParser:
+
+class DefaultTypeParser:
     def __init__(self):
         pass
 
@@ -26,11 +30,11 @@ class TypeParser:
         return {k: self.parse_dict(v) if isinstance(v, dict) else self.parse_type(v) for k, v in data.items()}
 
 
-class MongoDBParser(TypeParser):
+class MongoDBParser(DefaultTypeParser):
     """Parser to ensure data types are supported in a database environment"""
 
     def __init__(self):
-        TypeParser.__init__(self)
+        DefaultTypeParser.__init__(self)
 
     @staticmethod
     def ros_time_to_utc(ros_time):
@@ -87,21 +91,49 @@ class GenericPyROSMessage:
 
 class TopicStore:
     """Storage container for message data .dict() returns python objects, .ros_dict() returns ROS messages"""
-
     def __init__(self, data_tree, parser=None):
         self.__data_tree = data_tree
         if parser is None:
             parser = MongoDBParser()
         self.__parser = None
-        if isinstance(parser, TypeParser):
+        if isinstance(parser, DefaultTypeParser):
             self.__parser = parser
 
     @staticmethod
     def from_file(path):
-        raise NotImplementedError()
+        """Read a .topic_store file and return a TopicStore object`
 
-    def save(self, path):
-        raise NotImplementedError()
+        Args:
+            path (pathlib.Path, str): Location of the '**/*.topic_store' file
+        """
+        if not isinstance(path, (pathlib.Path, str)):
+            raise ValueError("path argument to TopicStore.save() must be either (str, pathlib.Path) not '{}'".format(
+                type(path)))
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+        if not path.exists():
+            raise IOError("Path '{}' does not exist".format(path))
+        path = path.with_suffix(".topic_store")
+        with path.open("rb") as fh:
+            return pickle.load(fh)
+
+    def save(self, path, overwrite=False):
+        """Dump the TopicStore as a .topic_store file. Can be loaded later as `store = TopicStore.from_file(path)`
+
+        Args:
+            path (pathlib.Path, str): Desired storage path
+            overwrite: If true will replace any existing files, if false will raise IOError if file exists.
+        """
+        if not isinstance(path, (pathlib.Path, str)):
+            raise ValueError("path argument to TopicStore.save() must be either (str, pathlib.Path) not '{}'".format(
+                type(path)))
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+        if not overwrite and path.exists():
+            raise IOError("Path '{}' already exists and overwrite=False".format(path))
+        path = path.with_suffix(".topic_store")
+        with path.open("wb") as fh:
+            pickle.dump(self, fh, protocol=pickle.HIGHEST_PROTOCOL)
 
     @property
     def dict(self):

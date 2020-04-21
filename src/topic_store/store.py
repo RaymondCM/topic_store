@@ -12,6 +12,8 @@ import rostopic
 
 from topic_store.data import TopicStore, GenericPyROSMessage
 
+__all__ = []
+
 
 class AutoSubscriber:
     """Subscribes to a topic from a string argument"""
