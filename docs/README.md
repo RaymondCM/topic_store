@@ -4,14 +4,36 @@ ROS package used for serialising common ROS messages to a database or filesystem
 
 # Usage
 
-1. Create a scenario file by following the documentation in [scenarios](./scenarios.md) or by following the example file
-[default_config.yaml](../default_config.yaml).
-2. Launch your data collection scenario `roslaunch topic_store run_scenario.launch scenario_file:="path/to/your/file.yaml"`.
-3. Enjoy!
+Create a scenario file by following the documentation in [scenarios](./scenarios.md) or by following the example file
+[default_config.yaml](../default_config.yaml). The example below will save a history of all messages sent to the ros log topic.
 
-# Roadmap
+```yaml
+# Save to /path/to/your/scenario/file.yaml
+context: "save_ros_logs"
+
+storage_method: "filesystem" 
+
+store_topics: { 
+  "ros_msg": "/rosout", 
+}
+
+collection_method: 
+  name: "event" 
+  watch_topic: "/rosout"
+```
+
+Launch your data collection scenario! 
+
+```
+roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"
+```
+
+Enjoy!
+
+# Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
+- [x] Tree based Subscribers and Message history
 - [x] Serialisation from genpy.Message to python types
 - [x] Parser for type compatibility between genpy.Message<->Python<->BSON<->MongoDB
 - [x] Scenario files for describing data collection behaviours
