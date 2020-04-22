@@ -9,8 +9,11 @@ import datetime
 import yaml
 from threading import Event
 
+import actionlib
 import pathlib
 import rospy
+from topic_store.msg import CollectDataAction, CollectDataActionResult, CollectDataActionFeedback, CollectDataResult, \
+    CollectDataFeedback
 
 from database_manager.database import DatabaseClient
 from topic_store.data import MongoDBParser
@@ -28,7 +31,7 @@ def _load_yaml_file(file_path):
 
 class ScenarioFileParser:
     __field_meta = ["context", "collection_method", "storage_method", "store_topics"]
-    __way_point_meta = {"service": [], "timer": ["capture_delay"], "event": ["watch_topic"]}
+    __collection_meta = {"service": [], "timer": ["capture_delay"], "event": ["watch_topic"]}
     __storage_meta = ["database", "filesystem"]
 
     def __init__(self, scenario_file):
@@ -44,32 +47,33 @@ class ScenarioFileParser:
         self.storage_method = scenario["storage_method"]
         self.store_topics = scenario["store_topics"]
 
-        self.collection_method = scenario["collection_method"]
-        if "name" not in self.collection_method:
+        self.collection_method_field = scenario["collection_method"]
+        if "name" not in self.collection_method_field:
             raise Exception("Collection method must contain a name parameter")
-        way_point_method = self.collection_method["name"]
-        if way_point_method not in self.__way_point_meta.keys():
-            raise Exception("Collection method must be either " + ', '.join(self.__way_point_meta.keys()))
+        collection_method_name = self.collection_method_field["name"]
+        if collection_method_name not in self.__collection_meta.keys():
+            raise Exception("Collection method must be either " + ', '.join(self.__collection_meta.keys()))
 
         for field in self.__field_meta:
             setattr(self, field, scenario[field])
 
         # Set necessary class parameters
-        for field in self.__way_point_meta[way_point_method]:
-            if field not in self.collection_method:
-                raise Exception("'{}' field needed for collection method '{}'".format(field, way_point_method))
-            setattr(self, field, self.collection_method[field])
+        for field in self.__collection_meta[collection_method_name]:
+            if field not in self.collection_method_field:
+                raise Exception("'{}' field needed for collection method '{}'".format(field, collection_method_name))
+            setattr(self, field, self.collection_method_field[field])
 
-        self.way_point_method = self.collection_method["name"]
+        self.collection_method = self.collection_method_field["name"]
 
 
 class ScenarioRunner:
-    def __init__(self, scenario_file, save_location, stabilise_time, ):
+    def __init__(self, runner_name, scenario_file, save_location, stabilise_time, ):
         self.saved_n = 0
 
+        self.scenario_file = scenario_file
+        self.runner_name = runner_name
         self.save_location = save_location
         self.stabilise_time = stabilise_time
-        self.scenario_file = scenario_file
         self.events = {}
 
         # Load Scenario
@@ -81,6 +85,8 @@ class ScenarioRunner:
         self.subscriber_tree = SubscriberTree(self.scenario.store_topics)
 
         # Choose appropriate methods
+        # Setting up the scenario runner this way means it's easily extendable by inheriting from Scenario runner
+        # and declaring custom behaviours
         save_init_function_name = "init_save_" + self.scenario.storage_method
         self.save_method_init_function = getattr(self, save_init_function_name, None)
         if not callable(self.save_method_init_function):
@@ -92,15 +98,26 @@ class ScenarioRunner:
         if not callable(self.save_method_function):
             raise Exception("Invalid storage value ('{}()' does not exist)".format(save_function_name))
 
-        way_point_init_function_name = "init_way_point_" + self.scenario.way_point_method
-        self.way_point_init_function = getattr(self, way_point_init_function_name, None)
-        if not callable(self.way_point_init_function):
-            raise Exception("Invalid way point value ('{}()' does not exist)".format(way_point_init_function_name))
+        collection_method_init_name = "init_way_point_" + self.scenario.collection_method
+        self.collection_method_init_function = getattr(self, collection_method_init_name, None)
+        if not callable(self.collection_method_init_function):
+            raise Exception("Invalid way point value ('{}()' does not exist)".format(collection_method_init_name))
 
-        self.way_point_init_function()
+        self.collection_method_init_function()
 
     def init_way_point_service(self):
-        raise NotImplementedError("Service implementation of ScenarioRunner not yet implemented")
+        def __request(goal_msg):
+            success, save_msg = self.save()
+            result = CollectDataResult(success)
+            feedback = CollectDataFeedback(save_msg)
+            self.service_server.publish_feedback(feedback)
+            (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
+        # TODO: Is one action server per scenario runner the best way to do this?
+        #   it may be better to use goal_msg.runner_name to determine which runner should save
+        action_lib_server_name = "{}collect_data".format(self.runner_name + ("_" if self.runner_name else ""))
+        print("\n\t- Starting '{}' actionlib server".format(action_lib_server_name))
+        self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
+        self.service_server.start()
 
     def set_event_msg_callback(self, data, event_id):
         if event_id in self.events:
@@ -125,21 +142,25 @@ class ScenarioRunner:
 
     def init_save_database(self):
         raise NotImplementedError("Save to database not yet implemented")
-        self.db_client = DatabaseClient()
+        # self.db_client = DatabaseClient()
 
     def init_save_filesystem(self):
         return
 
     def save_database(self, message_tree):
         raise NotImplementedError("Save to database not yet implemented")
-        print("\n\t- Saving document to database: ", end='')
-        self.db_client.import_dict(collection=self.scenario.context, dictionary=message_tree.dict)
+        # print("\n\t- Saving document to database: ", end='')
+        # self.db_client.import_dict(collection=self.scenario.context, dictionary=message_tree.dict)
 
     def save_filesystem(self, message_tree):
         formatted_date = datetime.datetime.utcnow().strftime('%Y_%m_%d')
         formatted_time = datetime.datetime.utcnow().strftime('%H_%M_%S_%f')
         save_folder = pathlib.Path(self.save_location) / self.scenario.context / formatted_date
-        save_folder.mkdir(parents=True, exist_okay=True)
+        try:
+            save_folder.mkdir(parents=True)
+        except OSError as e:
+            if e.errno != 17:  # File exists is okay
+                raise
 
         # Get a unique filename
         file_count = 0
@@ -156,5 +177,11 @@ class ScenarioRunner:
         message_tree.save(save_file)
 
     def save(self):
+        """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""
         data = self.subscriber_tree.get_message_tree(parser=self.parser)
-        self.save_method_function(data)
+        try:
+            self.save_method_function(data)
+        except Exception as e:
+            print("\n\t- Exception raised when saving! '{}'".format(e.message))
+            return False, e.message
+        return True, "Success!"

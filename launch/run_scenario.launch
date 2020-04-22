@@ -1,0 +1,61 @@
+<launch>
+    <!-- =========================================================================================================== -->
+    <!-- ===========================================NODE SETTINGS=================================================== -->
+    <!-- =========================================================================================================== -->
+    <!-- Global Settings For All Nodes -->
+    <arg name="scenario_file" default="$(find topic_store)/scenarios/default_config.yaml"/>
+
+    <!-- The IP of the rosbridge server for using the package with remote robots/systems -->
+    <arg name="rosbridge_ip" default="$(optenv ROSBRIDGE_IP none)"/>
+    <arg name="rosbridge_port" default="$(optenv ROSBRIDGE_PORT 9090)"/>
+
+    <!-- Autonomous data collection -->
+    <arg name="runner_name" default=""/>
+    <arg name="save_location" default="$(find topic_store)/stored_topics/"/>
+    <arg name="stabilise_time" default="0"/>
+
+    <!-- =========================================================================================================== -->
+    <!-- ===============================================NODES======================================================= -->
+
+    <!-- Launch ros_duct interface to republish topics locally if rosbridge_ip is set -->
+    <!-- Below usage is intended for a working with a remote robot, please change for your use case -->
+    <node pkg="rosduct" name="rosduct" type="rosduct_main.py" output="log" respawn="true" if="$(eval rosbridge_ip != 'none')">
+        <rosparam subst_value="True">
+            rosbridge_ip: $(arg rosbridge_ip)
+            rosbridge_port: $(arg rosbridge_port)
+
+            # Topics being published in the server to expose locally
+            remote_topics: [
+                ['/topological_navigation/status', 'actionlib_msgs/GoalStatusArray', '/topological_navigation/status'],
+                ['/topological_navigation/result', 'topological_navigation/GotoNodeActionResult', '/topological_navigation/result'],
+                ['/topological_navigation/feedback', 'topological_navigation/GotoNodeActionFeedback', '/topological_navigation/feedback'],
+                ['/current_node', 'std_msgs/String', '/current_node'],
+                ['/current_edge', 'std_msgs/String', '/current_edge'],
+                ['/closest_node', 'std_msgs/String', '/closest_node'],
+                ['/scan', 'sensor_msgs/LaserScan', '/scan'],
+                ['/robot_pose', 'geometry_msgs/Pose', '/robot_pose'],
+                ['/amcl_pose', 'geometry_msgs/PoseWithCovarianceStamped', '/amcl_pose'],
+            ]
+            # Topics being published in the local roscore to expose remotely
+            local_topics: [
+                ['/topological_navigation/goal', 'topological_navigation/GotoNodeActionGoal', '/topological_navigation/goal'],
+                ['/topological_navigation/cancel', 'actionlib_msgs/GoalID', '/topological_navigation/cancel'],
+            ]
+            # Services running in the server to expose locally
+            remote_services: []
+            # Services running locally to expose to the robot
+            local_services: []
+            # Parameters to be sync, they will be polled to stay in sync
+            parameters: []
+            parameter_polling_hz: 1
+        </rosparam>
+    </node>
+
+    <!-- Launch data collection scenario -->
+    <node pkg="topic_store" type="run_scenario.py" name="topic_store_scenario_runner" output="screen" required="true">
+        <param name="runner_name" value="$(arg runner_name)"/>
+        <param name="scenario_file" value="$(arg scenario_file)"/>
+        <param name="save_location" value="$(arg save_location)"/>
+        <param name="stabilise_time" value="$(arg stabilise_time)"/>
+    </node>
+</launch>

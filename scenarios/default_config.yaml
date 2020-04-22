@@ -1,0 +1,28 @@
+context: "default"
+
+storage_method: "filesystem"  # Where to store the data (database or filesystem)
+                                # database will store it on the localhost database client connection TODO: Connect to database with specific configuration
+                                # filesystem will store the information on file system under a folder named $save_location/$context
+                                  # $save_location must be set in the launch file e.g. /ext_drive/saved_data
+
+store_topics: {  # Key, Value pairs of storage key, topic content (the topics listed here will be saved in this tree)
+  "ros_msg": "/rosout",
+  "int": 1,
+  "float": 1.0,
+  "str": "1",
+  "dict": {"0": 0},
+  "list": [0],
+}
+
+collection_method:  # These parameters describe the robot data capture behaviour
+  name: "service"     # service will capture when the topic_store service is called using http://wiki.ros.org/actionlib
+
+                      # timer will wait n seconds between captures (
+                        #   - Requires 'capture_delay' field (number of seconds between captures)
+                      # event will until the 'watch_topic' topic publishes a new message (useful for videoing)
+                      #   - Requires 'watch_topic' field (topic name to wait for an update on)
+  capture_delay: 3  # The delay between timer captures
+  watch_topic: "/rosout"
+
+
+

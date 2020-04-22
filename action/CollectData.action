@@ -1,0 +1,8 @@
+# Goal
+string runner_name  # Specify which runner we want to use (Set in run_scenario.launch/run_scenario.py) for later use
+---
+# Result
+bool job_success  # True if the job was a success, False otherwise
+---
+# Feedback
+string job_status  # More specific job information stored here

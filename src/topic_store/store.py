@@ -12,7 +12,7 @@ import rostopic
 
 from topic_store.data import TopicStore, GenericPyROSMessage
 
-__all__ = []
+__all__ = ["SubscriberTree", "AutoSubscriber"]
 
 
 class AutoSubscriber:
@@ -48,7 +48,6 @@ class AutoLogger(GenericPyROSMessage):
 
 class SubscriberTree:
     def __init__(self, named_subscribers):
-        # type: (dict) -> None
         self.tree = self.__build_tree(named_subscribers)
 
     def __build_tree(self, named_subscribers):

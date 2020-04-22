@@ -7,8 +7,10 @@ add_definitions(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  genmsg
   std_msgs
   sensor_msgs
+  actionlib_msgs
   ros_numpy
   message_generation
 )
@@ -25,7 +27,9 @@ catkin_python_setup()
 
 add_message_files( FILES )
 
-generate_messages(DEPENDENCIES std_msgs sensor_msgs topic_store)
+add_action_files(DIRECTORY action FILES CollectData.action)
+
+generate_messages(DEPENDENCIES std_msgs sensor_msgs topic_store actionlib_msgs)
 
 # ==============================================
 # Setup
