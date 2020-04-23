@@ -30,6 +30,24 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 
 Enjoy!
 
+# Examples
+
+## Filesystem data
+
+The below example shows how to load and use `.topic_store` files, saved from when scenarios are ran with the 
+`storage_method="filesystem"` option.
+
+```python
+from topic_store import load
+from topic_store import MongoDBParser
+messages = load("/path/to/file.topic_store")
+parser = MongoDBParser()
+
+for item in messages:
+    print("As Python Types", item.dict)
+    print("As ROS Msgs", item.msgs)
+    print("As MongoDB Doc", item.to_dict(parser))  # or parser(item.dict)
+```
 # Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
