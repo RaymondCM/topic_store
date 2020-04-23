@@ -5,7 +5,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-import datetime
+from datetime import datetime
 import pickle
 
 import bson
@@ -19,15 +19,50 @@ __all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMess
 
 
 class DefaultTypeParser:
+    """Type cohersion utility class
+
+        Examples:
+        >>> parser = DefaultTypeParser()
+        >>> print(parser([1, 1, 1])) # Output: [1, 1, 1]
+        >>> parser.add_converters({int: float}) # Parser will now parse all ints as floats
+        >>> print(parser([1, 1, 1])) # Output: [1.0, 1.0, 1.0]
+    """
     def __init__(self):
-        pass
+        # Lookup of type conversions (overriding classes should update the dict)
+        self._core_types = [dict, list, tuple, set]
+        self._type_converters = {t: self.__parse_dict if t is dict else self.__parse_list for t in self._core_types}
 
-    @staticmethod
-    def parse_type(obj):
-        return obj
+    def add_converters(self, type_to_converter_map, replace_existing=True):
+        """Adds more conversion functions. Must pass a dict of type: converter function pairs.
 
-    def parse_dict(self, data):
-        return {k: self.parse_dict(v) if isinstance(v, dict) else self.parse_type(v) for k, v in data.items()}
+        Inheriting classes can use this method to support other type conversions by default.
+
+        Args:
+            type_to_converter_map (dict): Dict of type to callable returning a new type
+            replace_existing: If false will raise a ValueError if a mapping already exists
+        """
+        for t in type_to_converter_map.keys():
+            if t in self._core_types:
+                raise ValueError("'{}' is a core type, cannot override the basic iterables".format(t))
+        if not replace_existing and any(i in self._type_converters for i in type_to_converter_map.keys()):
+            for key in type_to_converter_map.keys():
+                if key in self._type_converters:
+                    raise ValueError("Mapping from '{}' already exists by '{}'".format(key, self._type_converters[key]))
+        self._type_converters.update(type_to_converter_map)
+
+    def __call__(self, data):
+        return self.parse_type(data)
+
+    def parse_type(self, data):
+        if type(data) in self._type_converters:
+            return self._type_converters[type(data)](data)
+        return data
+
+    def __parse_dict(self, data):
+        return {k: self.parse_type(v) for k, v in data.items()}
+
+    def __parse_list(self, data):
+        return [self.parse_type(i) for i in data]
 
 
 class MongoDBParser(DefaultTypeParser):
@@ -35,10 +70,22 @@ class MongoDBParser(DefaultTypeParser):
 
     def __init__(self):
         DefaultTypeParser.__init__(self)
+        self.add_converters({
+            rospy.rostime.Time: MongoDBParser.time_to_float,
+            genpy.rostime.Time: MongoDBParser.time_to_float,
+            datetime: MongoDBParser.time_to_float,
+            str: MongoDBParser.bytes_to_bson_if_not_unicode
+        })
 
     @staticmethod
-    def ros_time_to_utc(ros_time):
-        return datetime.datetime.utcfromtimestamp(ros_time.to_sec())
+    def time_to_float(time):
+        """Return time as ms float since epoch"""
+        if isinstance(time, rospy.rostime.Time) and hasattr(time, "to_sec"):
+            return ros_time_as_ms_float(time)
+        elif isinstance(time, datetime):
+            return time_as_ms_float(time)
+        else:
+            raise TypeError("time_to_float cannot handle type '{}'".format(type(time)))
 
     @staticmethod
     def bytes_to_bson_if_not_unicode(s):
@@ -47,16 +94,6 @@ class MongoDBParser(DefaultTypeParser):
         except UnicodeError:
             s = bson.binary.Binary(s)
         return s
-
-    @staticmethod
-    def parse_type(obj):
-        __conversion_functions = {rospy.rostime.Time: MongoDBParser.ros_time_to_utc,
-                                  genpy.rostime.Time: MongoDBParser.ros_time_to_utc,
-                                  str: MongoDBParser.bytes_to_bson_if_not_unicode}
-        if type(obj) in __conversion_functions:
-            return __conversion_functions[type(obj)](obj)
-
-        return obj
 
 
 class GenericPyROSMessage:
