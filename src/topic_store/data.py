@@ -31,7 +31,7 @@ def ros_time_as_ms_float(timestamp=None):
 
 
 class DefaultTypeParser:
-    """Type cohersion utility class
+    """Type coercion utility class
 
         Examples:
         >>> parser = DefaultTypeParser()
@@ -102,6 +102,8 @@ class MongoDBParser(DefaultTypeParser):
 
     @staticmethod
     def bytes_to_bson_if_not_unicode(s):
+        # If it's a utf-8 string then keep as string, otherwise convert to BSON
+        # In python 2.7 bytes and str are equivalent so this is needed for np.arrays and ros arrays
         try:
             s.decode('utf-8')
         except UnicodeError:
