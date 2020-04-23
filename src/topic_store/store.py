@@ -41,7 +41,7 @@ class AutoLogger(GenericPyROSMessage):
             if callback is None or not callable(callback):
                 callback = self.save
             self.subscriber = AutoSubscriber(data_to_store, callback=callback)
-            GenericPyROSMessage.__init__(self, None)
+            GenericPyROSMessage.__init__(self, data_to_store)
         else:
             GenericPyROSMessage.__init__(self, data_to_store)
 
@@ -74,7 +74,4 @@ class SubscriberTree:
     # TODO: Parser should be a part of TopicStorage not TopicStore
     def get_message_tree(self):
         """TopicStore: Representation of the SubscriberTree topics snapshot"""
-        msg_tree = self.__get_msg_tree(data_tree=self.tree)
-        msg_tree["timestamp"] = datetime.datetime.now()
-        msg_tree["ros_timestamp"] = rospy.Time.now()
-        return TopicStore(msg_tree)
+        return TopicStore(self.__get_msg_tree(data_tree=self.tree))

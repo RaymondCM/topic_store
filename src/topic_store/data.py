@@ -123,7 +123,10 @@ class GenericPyROSMessage:
         data = self._data
         if not isinstance(data, ROSMessage):
             return data
-        slots = {k: getattr(data, k) for k in data.__slots__}
+        slot_names = [k for k in data.__slots__]
+        if hasattr(data, "_connection_header"):
+            slot_names.append("_connection_header")
+        slots = {k: getattr(data, k) for k in slot_names}
         msg_dict = {k: GenericPyROSMessage(v).data if isinstance(v, ROSMessage) else v for k, v in slots.items()}
         msg_dict.update({"ros_meta": {'time': rospy.Time.now(), 'type': data._type}})
         return msg_dict
@@ -148,8 +151,8 @@ class TopicStore:
 
     def __init__(self, data_tree):
         self.__data_tree = data_tree
-        self.__sys_time = time_as_ms_float()
-        self.__ros_time = ros_time_as_ms_float()
+        self._sys_time = time_as_ms_float()
+        self._ros_time = ros_time_as_ms_float()
 
     @property
     def dict(self):
@@ -184,15 +187,55 @@ class TopicStore:
                     if not msg_class:
                         raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
                     cls = msg_class()
-                    for s in msg_class.__slots__:
+                    slot_names = list(msg_class.__slots__)
+                    if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
+                        slot_names.append("_connection_header")
+                    for s in slot_names:
                         setattr(cls, s, v[s])
+                    # setattr(cls, "_ros_meta", v["ros_meta"])
                     v = cls
             ros_msg_dict[k] = v
 
         return ros_msg_dict
 
+    @staticmethod
+    def __ros_msg_dict_to_list(ros_msg_dict):
+        if not isinstance(ros_msg_dict, dict):
+            return
+        for key, value in ros_msg_dict.items():
+            if isinstance(value, ROSMessage) and hasattr(value, "_connection_header"):
+                yield value
+            for ret in TopicStore.__ros_msg_dict_to_list(value):
+                yield ret
+
+    @staticmethod
+    def __dict_to_ros_msg_list(ros_dict):
+        ros_msg_list = []
+
+        for k, v in ros_dict.items():
+            if isinstance(v, dict):
+                v = TopicStore.__dict_to_ros_msg_list(v)
+                if "ros_meta" in v:
+                    msg_type = v["ros_meta"]["type"]
+                    msg_class = roslib.message.get_message_class(msg_type)
+                    if not msg_class:
+                        raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
+                    cls = msg_class()
+                    slot_names = list(msg_class.__slots__)
+                    if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
+                        slot_names.append("_connection_header")
+                    for s in slot_names:
+                        setattr(cls, s, v[s])
+                    v = cls
+            ros_msg_list.append(v)
+
+        return ros_msg_list
+
     def to_ros_msg_dict(self):
         return TopicStore.__dict_to_ros_msg_dict(self.__data_tree)
+
+    def to_ros_msg_list(self):
+        return list(TopicStore.__ros_msg_dict_to_list(self.to_ros_msg_dict()))
 
 
 class TopicStorage:

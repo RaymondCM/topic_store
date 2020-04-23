@@ -32,6 +32,14 @@ Enjoy!
 
 # Examples
 
+## Convert to ROS bags
+
+`.topic_store` files can be converted to ROS bags.
+
+```bash
+rosrun topic_store convert.py -i input.topic_store -o output.bag
+```
+
 ## Filesystem data
 
 The below example shows how to load and use `.topic_store` files, saved from when scenarios are ran with the 
@@ -56,6 +64,7 @@ for item in messages:
 - [x] Parser for type compatibility between genpy.Message<->Python<->BSON<->MongoDB
 - [x] Scenario files for describing data collection behaviours
 - [x] File system storage method as a ROS bag replacement for better compatibility.
-- [ ] Add rosbag compatibility
+- [x] Add rosbag compatibility (via convert.py)
+- [ ] Add covert to database compatibility (via convert.py)
 - [ ] Add database storage method to scenarios (need to determine best way to define DB connection)
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb
