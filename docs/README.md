@@ -5,10 +5,10 @@ ROS package used for serialising common ROS messages to a database or filesystem
 # Usage
 
 Create a scenario file by following the documentation in [scenarios](./scenarios.md) or by following the example file
-[default_config.yaml](../default_config.yaml). The example below will save a history of all messages sent to the ros log topic.
+[default_config.yaml](../scenarios/default_config.yaml). The example below will save a history of all messages sent to the ros log topic.
 
 ```yaml
-# Save to /path/to/your/scenario/file.yaml
+# Save to /path/to/your/scenario/file.yaml. This collection behaviour will save your log history.
 context: "save_ros_logs"
 
 storage_method: "filesystem" 

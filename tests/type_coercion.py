@@ -5,7 +5,6 @@
 from datetime import datetime
 
 import bson
-import pathlib
 import rospy
 
 from data import DefaultTypeParser, MongoDBParser
@@ -19,6 +18,7 @@ def __type_coercion_tests():
         ((1, 2, 3, 4, 5), [1, 2, 3, 4, 5]),
         ({1, 2, 3, 4, 5}, [1, 2, 3, 4, 5]),
     ]
+
     # Default Parser should do very little
     parser = DefaultTypeParser()
     for actual, expected in actual_expected:
@@ -49,6 +49,8 @@ def __type_coercion_tests():
         parsed = mongo_parser(actual)
         print(parsed, expected)
         assert type(parsed) == expected
+
+    print("All Type Coercion tests passed!")
 
 
 if __name__ == '__main__':

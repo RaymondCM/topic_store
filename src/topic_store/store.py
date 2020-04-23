@@ -71,10 +71,10 @@ class SubscriberTree:
         msg_tree = {k: v.data if not isinstance(v, dict) else self.__get_msg_tree(v) for k, v in data_tree.items()}
         return msg_tree
 
-    def get_message_tree(self, parser=None):
+    # TODO: Parser should be a part of TopicStorage not TopicStore
+    def get_message_tree(self):
+        """TopicStore: Representation of the SubscriberTree topics snapshot"""
         msg_tree = self.__get_msg_tree(data_tree=self.tree)
         msg_tree["timestamp"] = datetime.datetime.now()
         msg_tree["ros_timestamp"] = rospy.Time.now()
-        if parser is not None:
-            return TopicStore(msg_tree, parser=parser)
         return TopicStore(msg_tree)

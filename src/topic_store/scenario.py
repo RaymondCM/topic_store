@@ -16,7 +16,7 @@ from topic_store.msg import CollectDataAction, CollectDataActionResult, CollectD
     CollectDataFeedback
 
 from database_manager.database import DatabaseClient
-from topic_store.data import MongoDBParser
+from topic_store.data import MongoDBParser, TopicStorage
 from topic_store.store import SubscriberTree, AutoSubscriber
 
 
@@ -81,7 +81,7 @@ class ScenarioRunner:
         self.scenario = ScenarioFileParser(scenario_file)
 
         # Create subscriber tree for getting all the data
-        self.parser = MongoDBParser()
+        self.mongodb_parser = MongoDBParser()
         self.subscriber_tree = SubscriberTree(self.scenario.store_topics)
 
         # Choose appropriate methods
@@ -145,43 +145,41 @@ class ScenarioRunner:
         # self.db_client = DatabaseClient()
 
     def init_save_filesystem(self):
-        return
-
-    def save_database(self, message_tree):
-        raise NotImplementedError("Save to database not yet implemented")
-        # print("\n\t- Saving document to database: ", end='')
-        # self.db_client.import_dict(collection=self.scenario.context, dictionary=message_tree.dict)
-
-    def save_filesystem(self, message_tree):
-        formatted_date = datetime.datetime.utcnow().strftime('%Y_%m_%d')
-        formatted_time = datetime.datetime.utcnow().strftime('%H_%M_%S_%f')
-        save_folder = pathlib.Path(self.save_location) / self.scenario.context / formatted_date
+        formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        save_folder = pathlib.Path(self.save_location) / self.scenario.context
         try:
             save_folder.mkdir(parents=True)
         except OSError as e:
             if e.errno != 17:  # File exists is okay
                 raise
-
-        # Get a unique filename
+                # Get a unique filename
         file_count = 0
-        suffix_str = formatted_time
-        save_file = save_folder / "{}_{}.pkl".format(self.saved_n, suffix_str)
+        prefix_str = formatted_datetime
+        save_file = save_folder / "{}.pkl".format(prefix_str, self.saved_n)
         while save_file.exists():
-            suffix_str = "{}_{}".format(formatted_time, file_count)
-            save_file = save_folder / "{}_{}.pkl".format(self.saved_n, suffix_str)
+            prefix_str = "{}_{}".format(formatted_datetime, file_count)
+            save_file = save_folder / "{}_{}.pkl".format(prefix_str, self.saved_n)
             file_count += 1
+        print("\n\t- Initialised saving to the filesystem at '{}'".format(save_file))
+        self.filesystem_storage = TopicStorage(save_file)
 
-        print("\n\t- Saving documents to file system: {}".format(save_file), end='')
+    def save_database(self, message_tree):
+        raise NotImplementedError("Save to database not yet implemented")
+        # db_document = message_tree.to_dict(parser=self.mongodb_parser)
+        # print("\n\t- Saving document to database: ", end='')
+        # self.db_client.import_dict(collection=self.scenario.context, dictionary=db_document)
+
+    def save_filesystem(self, message_tree):
+        print("\n\t- Saving documents to file system n={}".format(self.saved_n), end='')
         self.saved_n += 1
-        save_file = save_folder / "{}_{}.pkl".format(self.saved_n, suffix_str)
-        message_tree.save(save_file)
+        self.filesystem_storage.append(message_tree)
 
     def save(self):
         """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""
-        data = self.subscriber_tree.get_message_tree(parser=self.parser)
+        data = self.subscriber_tree.get_message_tree()
         try:
             self.save_method_function(data)
         except Exception as e:
-            print("\n\t- Exception raised when saving! '{}'".format(e.message))
+            print("\n\t- Exception raised when saving! '{}'".format(e.message), end='')
             return False, e.message
         return True, "Success!"

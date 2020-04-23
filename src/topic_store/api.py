@@ -5,30 +5,20 @@
 
 import pathlib
 
-__all__ = ["load", "save"]
+__all__ = ["load"]
 
-from data import TopicStore
+from data import TopicStorage
 
 
 def load(path):
-    """ Load a '**/*.topic_store file dumped with TopicStore.save()
+    """ Load a '**/*.topic_store file written with TopicStorage
     Args:
         path (pathlib.Path, str): Path to the .topic_store file
 
     Returns:
         TopicStore
     """
-    return TopicStore.from_file(path)
-
-
-def save(topic_store_object, path, overwrite=False):
-    """ Save a TopicStore object to the file system.. Equivalent to TopicStore.save()
-    Args:
-        topic_store_object:
-        path (str, pathlib.Path): Where to save the object
-        overwrite: Will replace the file if true, else error if already exists
-    """
-    topic_store_object.save(path, overwrite=overwrite)
+    return TopicStorage(path)
 
 
 def get_from_db(file_path):

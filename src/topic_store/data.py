@@ -15,7 +15,7 @@ import roslib.message
 import rospy
 from genpy import Message as ROSMessage
 
-__all__ = ["TopicStorage", "TopicStorage", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
+__all__ = ["TopicStorage", "TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
 
 
 def time_as_ms_float(timestamp=None):
@@ -142,68 +142,42 @@ class GenericPyROSMessage:
 
 
 class TopicStore:
-    """Storage container for message data .dict() returns python objects, .ros_dict() returns ROS messages"""
-    def __init__(self, data_tree, parser=None):
+    """Storage container for message data .dict() returns python objects, .ros_dict() returns ROS messages
+    Useful for storing single documents in data bases
+    """
+
+    def __init__(self, data_tree):
         self.__data_tree = data_tree
-        if parser is None:
-            parser = MongoDBParser()
-        self.__parser = None
-        if isinstance(parser, DefaultTypeParser):
-            self.__parser = parser
-
-    @staticmethod
-    def from_file(path):
-        """Read a .topic_store file and return a TopicStore object`
-
-        Args:
-            path (pathlib.Path, str): Location of the '**/*.topic_store' file
-        """
-        if not isinstance(path, (pathlib.Path, str)):
-            raise ValueError("path argument to TopicStore.save() must be either (str, pathlib.Path) not '{}'".format(
-                type(path)))
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-        if not path.exists():
-            raise IOError("Path '{}' does not exist".format(path))
-        path = path.with_suffix(".topic_store")
-        with path.open("rb") as fh:
-            return pickle.load(fh)
-
-    def save(self, path, overwrite=False):
-        """Dump the TopicStore as a .topic_store file. Can be loaded later as `store = TopicStore.from_file(path)`
-
-        Args:
-            path (pathlib.Path, str): Desired storage path
-            overwrite: If true will replace any existing files, if false will raise IOError if file exists.
-        """
-        if not isinstance(path, (pathlib.Path, str)):
-            raise ValueError("path argument to TopicStore.save() must be either (str, pathlib.Path) not '{}'".format(
-                type(path)))
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-        if not overwrite and path.exists():
-            raise IOError("Path '{}' already exists and overwrite=False".format(path))
-        path = path.with_suffix(".topic_store")
-        with path.open("wb") as fh:
-            pickle.dump(self, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        self.__sys_time = time_as_ms_float()
+        self.__ros_time = ros_time_as_ms_float()
 
     @property
     def dict(self):
         return self.to_dict()
 
+    def __getitem__(self, item):
+        return self.dict[item]
+
+    def __str__(self):
+        python_dict = self.dict
+        return str({k: type(python_dict[k]) for k in python_dict.keys()})
+
     @property
-    def ros_dict(self):
+    def msgs(self):
         return self.to_ros_msg_dict()
 
-    def to_dict(self):
-        return self.__parser.parse_dict(self.__data_tree) if self.__parser else self.__data_tree
+    def to_dict(self, parser=None):
+        if isinstance(parser, DefaultTypeParser):
+            return parser.parse_dict(self.__data_tree)
+        return self.__data_tree
 
-    def __dict_to_ros_msg_dict(self, data_dict):
+    @staticmethod
+    def __dict_to_ros_msg_dict(data_dict):
         ros_msg_dict = {}
 
         for k, v in data_dict.items():
             if isinstance(v, dict):
-                v = self.__dict_to_ros_msg_dict(v)
+                v = TopicStore.__dict_to_ros_msg_dict(v)
                 if "ros_meta" in v:
                     msg_type = v["ros_meta"]["type"]
                     msg_class = roslib.message.get_message_class(msg_type)
@@ -218,4 +192,74 @@ class TopicStore:
         return ros_msg_dict
 
     def to_ros_msg_dict(self):
-        return self.__dict_to_ros_msg_dict(self.__data_tree)
+        return TopicStore.__dict_to_ros_msg_dict(self.__data_tree)
+
+
+class TopicStorage:
+    """Stores a history of TopicStore data trees for saving to the filesystem
+
+    Args:
+        path (str, pathlib.Path): Path to existing or new .topic_store file
+    """
+    suffix = ".topic_store"
+
+    def __init__(self, path):
+        if not isinstance(path, (pathlib.Path, str)) or not path:
+            raise ValueError("TopicStorage path arg must be either (str, pathlib.Path) not '{}'".format(type(path)))
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+            if not path.stem:
+                raise IOError("Please pass a path to a file not '{}'".format(path))
+        if path.exists() and path.suffix != TopicStorage.suffix:
+            raise IOError("File '{}' already exists and is not a {} file".format(path, TopicStorage.suffix))
+        path = path.with_suffix(TopicStorage.suffix)
+        self.path = path
+
+    def __write(self, topic_store):
+        if not self.path.exists():
+            try:
+                self.path.parent.mkdir(parents=True)
+            except OSError as e:
+                if e.errno != 17:  # File exists is okay
+                    raise
+        with self.path.open("ab" if self.path.exists() else "wb") as fh:
+            pickle.dump(topic_store, fh, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def append(self, topic_store):
+        if not isinstance(topic_store, TopicStore):
+            raise ValueError("TopicStorage only supports TopicStore types")
+        self.__write(topic_store)
+
+    def __iter__(self):
+        if not self.path.exists():
+            raise StopIteration()
+        with self.path.open("rb") as fh:
+            while True:
+                try:
+                    yield pickle.load(fh)
+                except EOFError:
+                    break
+
+    def __getitem__(self, item=0):
+        if not self.path.exists():
+            raise IndexError("File '{}' has not been written too yet.".format(self.path))
+        with self.path.open("rb") as fh:
+            try:
+                if isinstance(item, slice):
+                    raise NotImplementedError("TopicStorage does not support slicing due to inefficient loading")
+                # First skip over N items (for item=2 skip 2 items to get to item 2)
+                print("TopicStorage[{}] should not be used as it has to load {} files before returning!".format(item,
+                                                                                                                item))
+                for _ in range(item):
+                    pickle.load(fh)
+                return pickle.load(fh)
+            except EOFError:
+                # In this case its an index error
+                raise IndexError("File '{}' does not contain {} elements".format(self.path, item))
+
+    def __len__(self):
+        print("len(TopicStorage) should not be used as it has to load all files before returning!")
+        count = 0
+        for _ in self:
+            count += 1
+        return count
