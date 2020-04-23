@@ -15,7 +15,19 @@ import roslib.message
 import rospy
 from genpy import Message as ROSMessage
 
-__all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
+__all__ = ["TopicStorage", "TopicStorage", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
+
+
+def time_as_ms_float(timestamp=None):
+    if timestamp is None:
+        timestamp = datetime.now()
+    return (timestamp - datetime.fromtimestamp(0)).total_seconds()
+
+
+def ros_time_as_ms_float(timestamp=None):
+    if timestamp is None:
+        timestamp = rospy.Time.now()
+    return timestamp.to_sec()
 
 
 class DefaultTypeParser:
@@ -70,6 +82,7 @@ class MongoDBParser(DefaultTypeParser):
 
     def __init__(self):
         DefaultTypeParser.__init__(self)
+        # Conversion functions for bytes arrays (represented as string in python <3) and times
         self.add_converters({
             rospy.rostime.Time: MongoDBParser.time_to_float,
             genpy.rostime.Time: MongoDBParser.time_to_float,
