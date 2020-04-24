@@ -38,6 +38,24 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 rosrun topic_store convert.py -i input.topic_store -o output.bag
 ```
 
+## Database data
+
+The below example shows how to load and use files stored in a database. You can see that the interface for working with 
+databases and the filesystem are the same. All stored documents in the database are easily de-serialised for use.
+
+```python
+from topic_store import MongoClient
+
+client = MongoClient()
+
+collection = "your_collection"
+stored_topics = client.find(collection)  # Return all the documents in this collection
+
+for item in stored_topics:
+    print("As ROS msg", item.msgs)
+    print("As python dict", item.dict)
+```
+
 ## Filesystem data
 
 The below example shows how to load and use `.topic_store` files, saved from when scenarios are ran with the 
@@ -45,14 +63,12 @@ The below example shows how to load and use `.topic_store` files, saved from whe
 
 ```python
 from topic_store import load
-from topic_store import MongoDBParser
-messages = load("/path/to/file.topic_store")
-parser = MongoDBParser()
 
-for item in messages:
+stored_topics = load("/path/to/file.topic_store")
+
+for item in stored_topics:
     print("As Python Types", item.dict)
     print("As ROS Msgs", item.msgs)
-    print("As MongoDB Doc", item.to_dict(parser))  # or parser(item.dict)
 ```
 # Implementation Road Map
 
