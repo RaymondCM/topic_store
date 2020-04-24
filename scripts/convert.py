@@ -22,7 +22,7 @@ def topic_store_to_ros_bag(topic_store_file, output_file):
     try:
         for item in storage:
             msgs = item.to_ros_msg_list()
-            time = rospy.Time.from_sec(item._ros_time)
+            time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
             for msg in msgs:
                 source = msg._connection_header["topic"]
                 if source:

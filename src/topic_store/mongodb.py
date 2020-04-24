@@ -12,7 +12,7 @@ import pymongo
 
 __all__ = ["MongoClient"]
 
-from data import TopicStoreCursor, MongoDBParser
+from topic_store.data import TopicStoreCursor, MongoDBParser
 
 
 class MongoClient:
