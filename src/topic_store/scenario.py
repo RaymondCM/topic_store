@@ -21,14 +21,6 @@ from topic_store.data import MongoDBParser, TopicStorage
 from topic_store.store import SubscriberTree, AutoSubscriber
 
 
-def _load_yaml_file(file_path):
-    with open(file_path, 'r') as file_handle:
-        try:
-            contents = yaml.safe_load(file_handle)
-        except yaml.YAMLError as exc:
-            raise IOError(exc)
-    return contents
-
 
 class ScenarioFileParser:
     __field_meta = {
@@ -46,7 +38,7 @@ class ScenarioFileParser:
     }
 
     def __init__(self, scenario_file):
-        scenario = _load_yaml_file(scenario_file)
+        scenario = self._load_yaml_file(scenario_file)
 
         # Perform file checks (ensure all four sections exist and are the right types)
         for field in self.__field_meta:
@@ -86,6 +78,17 @@ class ScenarioFileParser:
         for parameter in self.collection.keys():  # Delete parameters that won't be used
             if parameter not in self.__field_meta["collection"][self.collection["method"]]:
                 del self.collection[parameter]
+
+    @staticmethod
+    def _load_yaml_file(file_path):
+        if isinstance(file_path, str):
+            file_path = pathlib.Path(file_path)
+        with file_path.open("r") as file_handle:
+            try:
+                contents = yaml.safe_load(file_handle)
+            except yaml.YAMLError as exc:
+                raise IOError(exc)
+        return contents
 
 
 class ScenarioRunner:

@@ -21,6 +21,7 @@ class MongoClient:
             uri = "mongodb://{}:{}/".format(host, port)
         self.client = pymongo.MongoClient(uri)
         self.db = self.client[db_name]
+        self.name = db_name
 
     def insert_one(self, collection, document):
         """Insert a dictionary as document under a collection

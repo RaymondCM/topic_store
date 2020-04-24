@@ -10,13 +10,31 @@ from __future__ import absolute_import, division, print_function
 import argparse
 
 import pathlib
+import pymongo
 import rosbag
 import rospy
 
-from topic_store import TopicStorage, load
+from topic_store.scenario import ScenarioFileParser
+from topic_store import TopicStorage, load, MongoClient, MongoDBParser
+
+
+def topic_store_to_mongodb(topic_store_file, scenario_file):
+    scenario = ScenarioFileParser(scenario_file)
+    print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, scenario.storage["uri"]))
+    client = MongoClient(uri=scenario.storage["uri"])
+    parser = MongoDBParser()
+    storage = load(topic_store_file)
+
+    for item in storage:
+        try:
+            client.insert_one(scenario.context, item.to_dict(parser))
+        except pymongo.errors.DuplicateKeyError:
+            print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, client.name,
+                                                                                           scenario.context))
 
 
 def topic_store_to_ros_bag(topic_store_file, output_file):
+    print("Converting '{}' to ROS bag '{}'".format(topic_store_file.name, output_file.name))
     storage = load(topic_store_file)
     ros_bag = rosbag.Bag(str(output_file), 'w')
     try:
@@ -46,8 +64,9 @@ def __convert():
     #     raise IOError("Output file '{}' already exists".format(output_file))
 
     if input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
-        print("Converting '{}' to ROS bag '{}'".format(input_file.name, output_file.name))
         topic_store_to_ros_bag(input_file, output_file)
+    elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":
+        topic_store_to_mongodb(input_file, output_file)
     else:
         print("No conversion or migration for '{}' to '{}'".format(input_file, output_file))
 

@@ -1,0 +1,23 @@
+# This file serves as documentation for how to construct topic_store scenario files
+
+context: "default"                      # Context defines the data collection collection identifier
+
+storage:
+  method: "database"                    # Where to store the data (database or filesystem)
+  uri: "mongodb://localhost:27017"      # If database specify the connection URI (including username and password)
+
+data: {
+  topics: {
+    rosout: "/rosout",
+    rosout_agg: "/rosout_agg",
+  },
+  "int": 1,
+  "float": 1.0,
+  "str": "1",
+  "dict": {"0": 0},
+  "list": [0, 0, 0, 0],
+}
+
+collection:                             # These parameters describe the data capture behaviour (when it occurs)
+  method: "action_server"               # collection.method=="action_server" will capture when the action_server receives a request
+  action_server_name: "collect_data"    # Where to listen for action server requests when collection.method=="action_server"

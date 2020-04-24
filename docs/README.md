@@ -35,14 +35,6 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 
 # Examples
 
-## Convert to ROS bags
-
-`.topic_store` files can be converted to ROS bags.
-
-```bash
-rosrun topic_store convert.py -i input.topic_store -o output.bag
-```
-
 ## Database data
 
 The below example shows how to load and use files stored in a database. You can see that the interface for working with 
@@ -75,6 +67,24 @@ for item in stored_topics:
     print("As Python Types", item.dict)
     print("As ROS Msgs", item.msgs)
 ```
+
+## Convert Filesystem to ROS bags
+
+`.topic_store` files can be converted to ROS bags.
+
+```bash
+rosrun topic_store convert.py -i input.topic_store -o output.bag
+```
+
+## Convert Filesystem to Database
+
+`.topic_store` files can be migrated to a MongoDB database. Pass the scenario file that contains the database connection information as the output file.
+
+```bash
+rosrun topic_store convert.py -i input.topic_store -o scenario_config.yaml
+```
+
+
 # Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
@@ -85,6 +95,6 @@ for item in stored_topics:
 - [x] File system storage method as a ROS bag replacement for better compatibility.
 - [x] Add rosbag compatibility (via convert.py)
 - [x] Add database storage method to scenarios
+- [x] Add covert to database compatibility (via convert.py)
 - [ ] Add credentials to database connection method
-- [ ] Add covert to database compatibility (via convert.py)
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb

@@ -12,7 +12,7 @@ storage:
 
 
 data: {                                 # Key, Value pairs of StorageFieldName: DesiredData
-  topics: {                           # Example of how to construct topic information in the documents
+  topics: {                             # Example of how to construct topic information in the documents
     rosout: "/rosout",
     rosout_agg: "/rosout_agg",
   },
