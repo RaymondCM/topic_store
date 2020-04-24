@@ -11,16 +11,21 @@ Create a scenario file by following the documentation in [scenarios](./scenarios
 # Save to /path/to/your/scenario/file.yaml. This collection behaviour will save your log history.
 context: "save_ros_logs"
 
-storage_method: "filesystem" 
+storage: 
+  "method": "filesystem"
+  "location": "default" 
 
-store_topics: { 
+data: { 
   "ros_msg": "/rosout", 
 }
 
-collection_method: 
-  name: "event" 
+collection: 
+  method: "event" 
   watch_topic: "/rosout"
 ```
+
+If ```storage.method``` is database ensure that your database is accessible at ```storage.uri```. 
+Only URI based connections are currently supported.
 
 Launch your data collection scenario! 
 
@@ -79,6 +84,7 @@ for item in stored_topics:
 - [x] Scenario files for describing data collection behaviours
 - [x] File system storage method as a ROS bag replacement for better compatibility.
 - [x] Add rosbag compatibility (via convert.py)
+- [x] Add database storage method to scenarios
+- [ ] Add credentials to database connection method
 - [ ] Add covert to database compatibility (via convert.py)
-- [ ] Add database storage method to scenarios (need to determine best way to define DB connection)
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb
