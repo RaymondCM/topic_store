@@ -120,15 +120,30 @@ class GenericPyROSMessage:
     @property
     def data(self):
         """If data is a genpy.Message return a python dict representation of it, else return the data"""
+        # If data is not a ROSMessage then return (it must be a python type)
         data = self._data
+
         if not isinstance(data, ROSMessage):
             return data
+
+        # If data is a ROS message then it has to be serialised to python
         slot_names = [k for k in data.__slots__]
+
+        # Preserve connection header for ROSBag conversion support
         if hasattr(data, "_connection_header"):
             slot_names.append("_connection_header")
+
+        # Copy the message information to a dict representation
         slots = {k: getattr(data, k) for k in slot_names}
-        msg_dict = {k: GenericPyROSMessage(v).data if isinstance(v, ROSMessage) else v for k, v in slots.items()}
-        msg_dict.update({"ros_meta": {'time': rospy.Time.now(), 'type': data._type}})
+
+        # If the message recursivly call GenericROSPyMessage to convert all sub-ROS msgs
+        msg_dict = {k: GenericPyROSMessage(v).data for k, v in slots.items()}
+
+        # Update the dict with some meta information
+        msg_dict.update({"_ros_meta": {
+            'time': rospy.Time.now(),
+            'type': getattr(data, "_type", None),
+        }})
         return msg_dict
 
     @data.setter
@@ -145,14 +160,23 @@ class GenericPyROSMessage:
 
 
 class TopicStore:
-    """Storage container for message data .dict() returns python objects, .ros_dict() returns ROS messages
-    Useful for storing single documents in data bases
+    """Storage container for message data .dict() returns python objects, .msgs() returns ROS messages
+    Useful for storing single documents in data bases (_id is prior generated)
     """
 
     def __init__(self, data_tree):
+        if not isinstance(data_tree, dict):
+            raise ValueError("Data tree must be a dict to construct a TopicStore")
         self.__data_tree = data_tree
+        if "_id" not in self.__data_tree:
+            self.__data_tree["_id"] = bson.ObjectId()
         self._sys_time = time_as_ms_float()
         self._ros_time = ros_time_as_ms_float()
+        self._id = self.__data_tree["_id"]
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def dict(self):
@@ -181,18 +205,19 @@ class TopicStore:
         for k, v in data_dict.items():
             if isinstance(v, dict):
                 v = TopicStore.__dict_to_ros_msg_dict(v)
-                if "ros_meta" in v:
-                    msg_type = v["ros_meta"]["type"]
+                if "_ros_meta" in v:
+                    msg_type = v["_ros_meta"]["type"]
                     msg_class = roslib.message.get_message_class(msg_type)
                     if not msg_class:
                         raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
                     cls = msg_class()
                     slot_names = list(msg_class.__slots__)
+                    # Support copying connection header for ROSBag support
                     if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
                         slot_names.append("_connection_header")
                     for s in slot_names:
                         setattr(cls, s, v[s])
-                    # setattr(cls, "_ros_meta", v["ros_meta"])
+                    # setattr(cls, "__ros_meta", v["_ros_meta"])
                     v = cls
             ros_msg_dict[k] = v
 
@@ -200,6 +225,7 @@ class TopicStore:
 
     @staticmethod
     def __ros_msg_dict_to_list(ros_msg_dict):
+        """Useful for getting all ROS messages as a list. Only messages with a _connection_header are returned."""
         if not isinstance(ros_msg_dict, dict):
             return
         for key, value in ros_msg_dict.items():
@@ -215,8 +241,8 @@ class TopicStore:
         for k, v in ros_dict.items():
             if isinstance(v, dict):
                 v = TopicStore.__dict_to_ros_msg_list(v)
-                if "ros_meta" in v:
-                    msg_type = v["ros_meta"]["type"]
+                if "_ros_meta" in v:
+                    msg_type = v["_ros_meta"]["type"]
                     msg_class = roslib.message.get_message_class(msg_type)
                     if not msg_class:
                         raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
