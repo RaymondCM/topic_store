@@ -10,8 +10,6 @@
     <arg name="rosbridge_port" default="$(optenv ROSBRIDGE_PORT 9090)"/>
 
     <!-- Autonomous data collection -->
-    <arg name="runner_name" default=""/>
-    <arg name="save_location" default="$(find topic_store)/stored_topics/"/>
     <arg name="stabilise_time" default="0"/>
 
     <!-- =========================================================================================================== -->
@@ -53,9 +51,7 @@
 
     <!-- Launch data collection scenario -->
     <node pkg="topic_store" type="run_scenario.py" name="topic_store_scenario_runner" output="screen" required="true">
-        <param name="runner_name" value="$(arg runner_name)"/>
         <param name="scenario_file" value="$(arg scenario_file)"/>
-        <param name="save_location" value="$(arg save_location)"/>
         <param name="stabilise_time" value="$(arg stabilise_time)"/>
     </node>
 </launch>

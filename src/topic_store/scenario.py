@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import datetime
+import rospkg
 import yaml
 from threading import Event
 
@@ -30,49 +31,68 @@ def _load_yaml_file(file_path):
 
 
 class ScenarioFileParser:
-    __field_meta = ["context", "collection_method", "storage_method", "store_topics"]
-    __collection_meta = {"service": [], "timer": ["capture_delay"], "event": ["watch_topic"]}
-    __storage_meta = ["database", "filesystem"]
+    __field_meta = {
+        "context": "",
+        "collection": {
+            "action_server": ["method", "action_server_name"],
+            "timer": ["method", "timer_delay"],
+            "event": ["method", "watch_topic"]
+        },
+        "storage": {
+            "database": ["method", "uri"],
+            "filesystem": ["method", "location"]
+        },
+        "data": {}
+    }
 
     def __init__(self, scenario_file):
         scenario = _load_yaml_file(scenario_file)
 
-        # Perform file checks
+        # Perform file checks (ensure all four sections exist and are the right types)
         for field in self.__field_meta:
             if field not in scenario:
                 raise Exception("'{}' field missing from scenario file: {}".format(field, scenario_file))
-        storage_method = scenario["storage_method"]
-        if storage_method not in self.__storage_meta:
-            raise Exception("Storage method must be either " + ', '.join(self.__storage_meta))
-        self.storage_method = scenario["storage_method"]
-        self.store_topics = scenario["store_topics"]
+            if not isinstance(scenario[field], type(self.__field_meta[field])):
+                raise Exception("'{}' field should be type '{}' not '{}'".format(field, type(self.__field_meta[field]),
+                                                                                 type(scenario[field])))
+        # Parse context info
+        self.context = scenario["context"]
 
-        self.collection_method_field = scenario["collection_method"]
-        if "name" not in self.collection_method_field:
-            raise Exception("Collection method must contain a name parameter")
-        collection_method_name = self.collection_method_field["name"]
-        if collection_method_name not in self.__collection_meta.keys():
-            raise Exception("Collection method must be either " + ', '.join(self.__collection_meta.keys()))
+        # Parse storage Info
+        self.storage = scenario["storage"]
+        if "method" not in self.storage:
+            raise Exception("storage.method must be either " + ', '.join(list(self.__field_meta["storage"].keys())))
+        for required_parameter in self.__field_meta["storage"][self.storage["method"]]:
+            if required_parameter not in self.storage:
+                raise Exception("Storage field in YAML file must have the parameter '{}' when method=='{}'".format(
+                    required_parameter, self.storage["method"]
+                ))
+        for parameter in self.storage.keys():  # Delete parameters that won't be used
+            if parameter not in self.__field_meta["storage"][self.storage["method"]]:
+                del self.storage[parameter]
 
-        for field in self.__field_meta:
-            setattr(self, field, scenario[field])
+        # Data should just be a dict of key: data lookups
+        self.data = scenario["data"]
 
-        # Set necessary class parameters
-        for field in self.__collection_meta[collection_method_name]:
-            if field not in self.collection_method_field:
-                raise Exception("'{}' field needed for collection method '{}'".format(field, collection_method_name))
-            setattr(self, field, self.collection_method_field[field])
-
-        self.collection_method = self.collection_method_field["name"]
+        # Parse collection info
+        self.collection = scenario["collection"]
+        if "method" not in self.collection:
+            raise Exception("collection.method must be either " + ', '.join(self.__field_meta["collection"].keys()))
+        for required_parameter in self.__field_meta["collection"][self.collection["method"]]:
+            if required_parameter not in self.collection:
+                raise Exception("Collection field in YAML file must have the parameter '{}' when method=='{}'".format(
+                    required_parameter, self.collection["method"]
+                ))
+        for parameter in self.collection.keys():  # Delete parameters that won't be used
+            if parameter not in self.__field_meta["collection"][self.collection["method"]]:
+                del self.collection[parameter]
 
 
 class ScenarioRunner:
-    def __init__(self, runner_name, scenario_file, save_location, stabilise_time, ):
+    def __init__(self, scenario_file, stabilise_time):
         self.saved_n = 0
 
         self.scenario_file = scenario_file
-        self.runner_name = runner_name
-        self.save_location = save_location
         self.stabilise_time = stabilise_time
         self.events = {}
 
@@ -81,31 +101,30 @@ class ScenarioRunner:
         self.scenario = ScenarioFileParser(scenario_file)
 
         # Create subscriber tree for getting all the data
-        self.mongodb_parser = MongoDBParser()
-        self.subscriber_tree = SubscriberTree(self.scenario.store_topics)
+        self.subscriber_tree = SubscriberTree(self.scenario.data)
 
         # Choose appropriate methods
         # Setting up the scenario runner this way means it's easily extendable by inheriting from Scenario runner
         # and declaring custom behaviours
-        save_init_function_name = "init_save_" + self.scenario.storage_method
+        save_init_function_name = "init_save_" + self.scenario.storage["method"]
         self.save_method_init_function = getattr(self, save_init_function_name, None)
         if not callable(self.save_method_init_function):
             raise Exception("Invalid storage value ('{}()' does not exist)".format(save_init_function_name))
         self.save_method_init_function()
 
-        save_function_name = "save_" + self.scenario.storage_method
+        save_function_name = "save_" + self.scenario.storage["method"]
         self.save_method_function = getattr(self, save_function_name, None)
         if not callable(self.save_method_function):
             raise Exception("Invalid storage value ('{}()' does not exist)".format(save_function_name))
 
-        collection_method_init_name = "init_way_point_" + self.scenario.collection_method
+        collection_method_init_name = "init_way_point_" + self.scenario.collection["method"]
         self.collection_method_init_function = getattr(self, collection_method_init_name, None)
         if not callable(self.collection_method_init_function):
             raise Exception("Invalid way point value ('{}()' does not exist)".format(collection_method_init_name))
 
         self.collection_method_init_function()
 
-    def init_way_point_service(self):
+    def init_way_point_action_server(self):
         def __request(goal_msg):
             success, save_msg = self.save()
             result = CollectDataResult(success)
@@ -114,7 +133,7 @@ class ScenarioRunner:
             (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
         # TODO: Is one action server per scenario runner the best way to do this?
         #   it may be better to use goal_msg.runner_name to determine which runner should save
-        action_lib_server_name = "{}collect_data".format(self.runner_name + ("_" if self.runner_name else ""))
+        action_lib_server_name = self.scenario.collection["action_server_name"]
         print("\n\t- Starting '{}' actionlib server".format(action_lib_server_name))
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
@@ -125,28 +144,37 @@ class ScenarioRunner:
             self.events[event_id]["event"].set()
 
     def init_way_point_timer(self):
+        delay = self.scenario.collection["timer_delay"]
         while not rospy.is_shutdown():
             self.save()
-            print("\n\t- Waiting for {}s before next data cycle".format(self.scenario.capture_delay))
-            rospy.sleep(self.scenario.capture_delay)
+            print("\n\t- Waiting for {}s before next data cycle".format(delay))
+            rospy.sleep(delay)
 
     def init_way_point_event(self):
         event_name = "topic_update"
+        topic_to_watch = self.scenario.collection["watch_topic"]
         self.events[event_name] = {"event": Event(), "data": ""}
-        AutoSubscriber(self.scenario.watch_topic, callback=self.set_event_msg_callback, callback_args=event_name)
+        AutoSubscriber(topic_to_watch, callback=self.set_event_msg_callback, callback_args=event_name)
         while not rospy.is_shutdown():
             self.events[event_name]["event"].wait()
             self.events[event_name]["event"].clear()
             self.save()
-            print("\n\t- Waiting for event on '{}' topic before next data cycle".format(self.scenario.watch_topic))
+            print("\n\t- Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def init_save_database(self):
         raise NotImplementedError("Save to database not yet implemented")
-        # self.db_client = DatabaseClient()
+        self.mongodb_parser = MongoDBParser()
+        self.db_client = M()
 
     def init_save_filesystem(self):
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-        save_folder = pathlib.Path(self.save_location) / self.scenario.context
+        save_location = self.scenario.storage["location"]
+        if not save_location or save_location in ["default", "auto", "topic_store"]:
+            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "stored_topics"
+        else:
+            save_location = pathlib.Path(save_location)
+        save_folder = save_location / self.scenario.context
+        print("\n\t- Configured save_location as '{}'".format(save_folder), end=' ')
         try:
             save_folder.mkdir(parents=True)
         except OSError as e:

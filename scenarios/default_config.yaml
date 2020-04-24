@@ -1,28 +1,39 @@
-context: "default"
+# This file serves as documentation for how to construct topic_store scenario files
+#    - A lot of parameters can be deleted but are here to document the possible configurations
 
-storage_method: "filesystem"  # Where to store the data (database or filesystem)
-                                # database will store it on the localhost database client connection TODO: Connect to database with specific configuration
-                                # filesystem will store the information on file system under a folder named $save_location/$context
-                                  # $save_location must be set in the launch file e.g. /ext_drive/saved_data
+context: "default"                      # Context defines the data collection collection identifier
+                                        # If storage.method=="filesystem" then files are stored in a folder named this identifier
+                                        # If storage.method=="database" then documents are stored in a collection named this identifier
 
-store_topics: {  # Key, Value pairs of storage key, topic content (the topics listed here will be saved in this tree)
-  "ros_msg": "/rosout",
-  "int": 1,
+storage:
+  method: "filesystem"                  # Where to store the data (database or filesystem)
+  location: "default"                   # If filesystem specify a storage location (default=$(find topic store)/stored_topics/)
+  uri: "mongodb://localhost:27017"      # If database specify the connection URI (including username and password)
+
+
+data: {                                 # Key, Value pairs of StorageFieldName: DesiredData
+  topics: {                           # Example of how to construct topic information in the documents
+    rosout: "/rosout",
+    rosout_agg: "/rosout_agg",
+  },
+  "int": 1,                             # Data doesn't have to be a ROS topic it can also be any YAML types
   "float": 1.0,
   "str": "1",
   "dict": {"0": 0},
-  "list": [0],
+  "list": [0, 0, 0, 0],
 }
 
-collection_method:  # These parameters describe the robot data capture behaviour
-  name: "service"     # service will capture when the topic_store service is called using http://wiki.ros.org/actionlib
+collection:                             # These parameters describe the data capture behaviour (when it occurs)
+  method: "action_server"               # collection.method=="action_server" will capture when the action_server receives a request
+                                        #   - Requires 'action_server_name' field for launching the action server
+                                        # collection.method=="timer" will wait n seconds between captures
+                                        #   - Requires 'timer_delay' field (number of seconds between captures)
+                                        # collection.method=="event" will until the 'watch_topic' topic publishes a new message (useful for videoing)
+                                        #   - Requires 'watch_topic' field (topic name to wait for an update on)
 
-                      # timer will wait n seconds between captures (
-                        #   - Requires 'capture_delay' field (number of seconds between captures)
-                      # event will until the 'watch_topic' topic publishes a new message (useful for videoing)
-                      #   - Requires 'watch_topic' field (topic name to wait for an update on)
-  capture_delay: 3  # The delay between timer captures
-  watch_topic: "/rosout"
+  action_server_name: "collect_data"    # Where to listen for action server requests when collection.method=="action_server"
+  timer_delay: 3                        # The delay between data dumps when collection.method=="timer"
+  watch_topic: "/rosout"                # Data is dumped when this topic publishes a message when collection.method=="watch_topic"
 
 
 

@@ -20,12 +20,10 @@ def run_scenario():
     pkg_root = rospkg.RosPack().get_path("topic_store")
 
     # Get parameters
-    runner_name = rospy.get_param('~runner_name', "")
     stabilise_time = rospy.get_param('~stabilise_time', 0)
-    save_location = rospy.get_param('~save_location', str(pathlib.Path(__file__).parent.parent / "stored_topics"))
     scenario_file = rospy.get_param('~scenario_file', str(pathlib.Path(pkg_root) / "scenarios/default_config.yaml"))
 
-    data_logger = ScenarioRunner(runner_name, scenario_file, save_location, stabilise_time)
+    data_logger = ScenarioRunner(scenario_file, stabilise_time)
 
 
 if __name__ == '__main__':
