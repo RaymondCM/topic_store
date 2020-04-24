@@ -11,20 +11,22 @@ import pickle
 import bson
 import genpy
 import pathlib
+import pymongo
 import roslib.message
 import rospy
 from genpy import Message as ROSMessage
 
-__all__ = ["TopicStorage", "TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage"]
+__all__ = ["TopicStorage", "TopicStoreCursor", "TopicStore", "MongoDBParser", "DefaultTypeParser",
+           "GenericPyROSMessage"]
 
 
-def time_as_ms_float(timestamp=None):
+def time_as_ms(timestamp=None):
     if timestamp is None:
         timestamp = datetime.now()
     return (timestamp - datetime.fromtimestamp(0)).total_seconds()
 
 
-def ros_time_as_ms_float(timestamp=None):
+def ros_time_as_ms(timestamp=None):
     if timestamp is None:
         timestamp = rospy.Time.now()
     return timestamp.to_sec()
@@ -84,21 +86,8 @@ class MongoDBParser(DefaultTypeParser):
         DefaultTypeParser.__init__(self)
         # Conversion functions for bytes arrays (represented as string in python <3) and times
         self.add_converters({
-            rospy.rostime.Time: MongoDBParser.time_to_float,
-            genpy.rostime.Time: MongoDBParser.time_to_float,
-            datetime: MongoDBParser.time_to_float,
             str: MongoDBParser.bytes_to_bson_if_not_unicode
         })
-
-    @staticmethod
-    def time_to_float(time):
-        """Return time as ms float since epoch"""
-        if isinstance(time, rospy.rostime.Time) and hasattr(time, "to_sec"):
-            return ros_time_as_ms_float(time)
-        elif isinstance(time, datetime):
-            return time_as_ms_float(time)
-        else:
-            raise TypeError("time_to_float cannot handle type '{}'".format(type(time)))
 
     @staticmethod
     def bytes_to_bson_if_not_unicode(s):
@@ -123,7 +112,7 @@ class GenericPyROSMessage:
         # If data is not a ROSMessage then return (it must be a python type)
         data = self._data
 
-        if not isinstance(data, ROSMessage):
+        if not issubclass(type(data), (ROSMessage, genpy.Time, genpy.Duration)):
             return data
 
         # If data is a ROS message then it has to be serialised to python
@@ -136,14 +125,22 @@ class GenericPyROSMessage:
         # Copy the message information to a dict representation
         slots = {k: getattr(data, k) for k in slot_names}
 
-        # If the message recursivly call GenericROSPyMessage to convert all sub-ROS msgs
+        # If the message recursively call GenericROSPyMessage to convert all sub-ROS msgs
         msg_dict = {k: GenericPyROSMessage(v).data for k, v in slots.items()}
+
+        msg_type = getattr(data, "_type", None)
+        if msg_type is None:
+            if issubclass(type(data), genpy.Time):
+                msg_type = "genpy.Time"
+            elif issubclass(type(data), genpy.Duration):
+                msg_type = "genpy.Duration"
 
         # Update the dict with some meta information
         msg_dict.update({"_ros_meta": {
-            'time': rospy.Time.now(),
-            'type': getattr(data, "_type", None),
+            'time': ros_time_as_ms(),
+            'type': msg_type,
         }})
+
         return msg_dict
 
     @data.setter
@@ -170,13 +167,20 @@ class TopicStore:
         self.__data_tree = data_tree
         if "_id" not in self.__data_tree:
             self.__data_tree["_id"] = bson.ObjectId()
-        self._sys_time = time_as_ms_float()
-        self._ros_time = ros_time_as_ms_float()
-        self._id = self.__data_tree["_id"]
+        if "_ts_meta" not in self.__data_tree:
+            self.__data_tree["_ts_meta"] = dict(sys_time=time_as_ms(), ros_time=ros_time_as_ms())
+
+    @property
+    def sys_time(self):
+        return self.__data_tree["_ts_meta"]["sys_time"]
+
+    @property
+    def ros_time(self):
+        return self.__data_tree["_ts_meta"]["sys_time"]
 
     @property
     def id(self):
-        return self._id
+        return self.__data_tree["_id"]
 
     @property
     def dict(self):
@@ -194,8 +198,8 @@ class TopicStore:
         return self.to_ros_msg_dict()
 
     def to_dict(self, parser=None):
-        if isinstance(parser, DefaultTypeParser):
-            return parser.parse_dict(self.__data_tree)
+        if hasattr(parser, "parse_type"):
+            return parser(self.__data_tree)
         return self.__data_tree
 
     @staticmethod
@@ -207,16 +211,21 @@ class TopicStore:
                 v = TopicStore.__dict_to_ros_msg_dict(v)
                 if "_ros_meta" in v:
                     msg_type = v["_ros_meta"]["type"]
-                    msg_class = roslib.message.get_message_class(msg_type)
-                    if not msg_class:
-                        raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
-                    cls = msg_class()
-                    slot_names = list(msg_class.__slots__)
-                    # Support copying connection header for ROSBag support
-                    if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
-                        slot_names.append("_connection_header")
-                    for s in slot_names:
-                        setattr(cls, s, v[s])
+                    if msg_type in ["genpy.Time", "genpy.Duration"] and all(s in v for s in ["secs", "nsecs"]):
+                        cls = rospy.rostime.Time if "Time" in msg_type else rospy.rostime.Duration
+                        del v["_ros_meta"]
+                        cls = cls(**v)
+                    else:
+                        msg_class = roslib.message.get_message_class(msg_type)
+                        if not msg_class:
+                            raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
+                        cls = msg_class()
+                        slot_names = list(msg_class.__slots__)
+                        # Support copying connection header for ROSBag support
+                        if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
+                            slot_names.append("_connection_header")
+                        for s in slot_names:
+                            setattr(cls, s, v[s])
                     # setattr(cls, "__ros_meta", v["_ros_meta"])
                     v = cls
             ros_msg_dict[k] = v
@@ -262,6 +271,22 @@ class TopicStore:
 
     def to_ros_msg_list(self):
         return list(TopicStore.__ros_msg_dict_to_list(self.to_ros_msg_dict()))
+
+
+class TopicStoreCursor(pymongo.cursor.Cursor):
+    """Wrapper for a pymongo.cursor.Cursor object to return documents as the TopicStore"""
+    def __init__(self, cursor):
+        super(TopicStoreCursor, self).__init__(cursor.collection)
+        # Copy the cursor to this parent class
+        self._clone(True, cursor)
+
+    def __getitem__(self, item):
+        return TopicStore(super(TopicStoreCursor, self).__getitem__(item))
+
+    def next(self):
+        return TopicStore(super(TopicStoreCursor, self).next())
+
+    __next__ = next
 
 
 class TopicStorage:

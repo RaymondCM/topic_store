@@ -28,8 +28,6 @@ Launch your data collection scenario!
 roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"
 ```
 
-Enjoy!
-
 # Examples
 
 ## Convert to ROS bags
