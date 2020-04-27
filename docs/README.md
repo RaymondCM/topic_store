@@ -27,8 +27,8 @@ collection:
 If ```storage.method``` is database ensure that your database is accessible at ```storage.uri```. 
 Only URI based connections are currently supported. To launch the default database 
 ```roslaunch topic_store start_database.launch```, the default database creates/uses a Mongo 4.2 server instance in the 
-default ```$(find topic_store)/stored_topics/database```. Docker is used to bring up the server instance to avoid version 
-conflicts.
+default ```$(find topic_store)/stored_topics/database``` folder exposed on ```localhost:65530```. Docker is used to bring up the server instance to avoid version 
+conflicts with system mongo.
 
 Launch your data collection scenario! 
 
@@ -46,10 +46,10 @@ databases and the filesystem are the same. All stored documents in the database 
 ```python
 from topic_store import MongoClient
 
-client = MongoClient()
+your_context = "your_collection"
+client = MongoClient(collection=your_context)
 
-collection = "your_collection"
-stored_topics = client.find(collection)  # Return all the documents in this collection
+stored_topics = client.find()  # Return all the documents in this collection
 
 for item in stored_topics:
     print("As ROS msg", item.msgs)
@@ -86,7 +86,6 @@ rosrun topic_store convert.py -i input.topic_store -o output.bag
 ```bash
 rosrun topic_store convert.py -i input.topic_store -o scenario_config.yaml
 ```
-
 
 # Implementation Road Map
 
