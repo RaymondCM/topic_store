@@ -13,6 +13,7 @@ import pathlib
 import pymongo
 import rosbag
 import rospy
+from tqdm import tqdm
 
 from topic_store.scenario import ScenarioFileParser
 from topic_store import TopicStorage, load, MongoClient, MongoDBParser
@@ -21,31 +22,61 @@ from topic_store import TopicStorage, load, MongoClient, MongoDBParser
 def topic_store_to_mongodb(topic_store_file, scenario_file):
     scenario = ScenarioFileParser(scenario_file)
     print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, scenario.storage["uri"]))
-    client = MongoClient(uri=scenario.storage["uri"])
+    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
     parser = MongoDBParser()
     storage = load(topic_store_file)
+    count = len(storage)  # TODO: very slow operation
+    with tqdm(total=count) as progress_bar:
+        for item in storage:
+            try:
+                client.insert_one(item.to_dict(parser))
+            except pymongo.errors.DuplicateKeyError:
+                print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, client.name,
+                                                                                               scenario.context))
+            progress_bar.update()
 
-    for item in storage:
-        try:
-            client.insert_one(scenario.context, item.to_dict(parser))
-        except pymongo.errors.DuplicateKeyError:
-            print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, client.name,
-                                                                                           scenario.context))
+
+def mongodb_to_ros_bag(scenario_file, output_file):
+    scenario = ScenarioFileParser(scenario_file)
+    print("Converting MongoDB '{}' to ROS bag '{}'".format(scenario.storage["uri"], output_file.name))
+    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
+    storage = client.find()
+    count = storage.count()
+
+    ros_bag = rosbag.Bag(str(output_file), 'w')
+
+    try:
+        with tqdm(total=count) as progress_bar:
+            for item in storage:
+                msgs = item.to_ros_msg_list()
+                time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
+                for msg in msgs:
+                    source = msg._connection_header["topic"]
+                    if source:
+                        ros_bag.write(source, msg, time)
+                progress_bar.update()
+    finally:
+        print("Closing the ROS bag '{}'".format(output_file))
+        ros_bag.close()
 
 
 def topic_store_to_ros_bag(topic_store_file, output_file):
     print("Converting '{}' to ROS bag '{}'".format(topic_store_file.name, output_file.name))
     storage = load(topic_store_file)
+    count = len(storage)  # TODO: very slow operation
     ros_bag = rosbag.Bag(str(output_file), 'w')
     try:
-        for item in storage:
-            msgs = item.to_ros_msg_list()
-            time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
-            for msg in msgs:
-                source = msg._connection_header["topic"]
-                if source:
-                    ros_bag.write(source, msg, time)
+        with tqdm(total=count) as progress_bar:
+            for item in storage:
+                msgs = item.to_ros_msg_list()
+                time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
+                for msg in msgs:
+                    source = msg._connection_header["topic"]
+                    if source:
+                        ros_bag.write(source, msg, time)
+                progress_bar.update()
     finally:
+        print("Closing the ROS bag '{}'".format(output_file))
         ros_bag.close()
 
 
@@ -65,6 +96,8 @@ def __convert():
 
     if input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
         topic_store_to_ros_bag(input_file, output_file)
+    elif input_file.suffix == ".yaml" and output_file.suffix == ".bag":
+        mongodb_to_ros_bag(input_file, output_file)
     elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":
         topic_store_to_mongodb(input_file, output_file)
     else:

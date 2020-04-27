@@ -9,7 +9,7 @@ import pymongo
 
 __all__ = ["MongoClient"]
 
-from topic_store.data import TopicStoreCursor, TopicStore
+from topic_store.data import TopicStoreCursor, TopicStore, MongoDBReverseParser
 
 
 class MongoClient:
@@ -24,6 +24,7 @@ class MongoClient:
         self.name = db_name
         self._db = self.client[db_name]
         self._collection_name = collection
+        self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
 
     @property
     def collection(self):
@@ -56,7 +57,7 @@ class MongoClient:
 
     def find_one(self, query, *args, **kwargs):
         """Returns a matched TopicStore document"""
-        return TopicStore(self.collection.find_one(query, *args, **kwargs))
+        return TopicStore(self.reverse_parser(self.collection.find_one(query, *args, **kwargs)))
 
     def find_by_id(self, id_str, *args, **kwargs):
         """Returns a matched TopicStore document"""
