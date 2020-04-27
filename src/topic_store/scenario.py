@@ -173,7 +173,7 @@ class ScenarioRunner:
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         save_location = self.scenario.storage["location"]
         if not save_location or save_location in ["default", "auto", "topic_store"]:
-            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "stored_topics"
+            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "filesystem" / "stored_topics"
         else:
             save_location = pathlib.Path(save_location)
         save_folder = save_location / self.scenario.context

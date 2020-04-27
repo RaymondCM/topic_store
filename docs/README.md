@@ -25,7 +25,10 @@ collection:
 ```
 
 If ```storage.method``` is database ensure that your database is accessible at ```storage.uri```. 
-Only URI based connections are currently supported.
+Only URI based connections are currently supported. To launch the default database 
+```roslaunch topic_store start_database.launch```, the default database creates/uses a Mongo 4.2 server instance in the 
+default ```$(find topic_store)/stored_topics/database```. Docker is used to bring up the server instance to avoid version 
+conflicts.
 
 Launch your data collection scenario! 
 

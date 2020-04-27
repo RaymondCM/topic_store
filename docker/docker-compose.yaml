@@ -1,0 +1,14 @@
+#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Email: ray.tunstill@gmail.com
+
+# set environment variables using .env file located in this same directory
+version: "3.7"
+
+services:
+  mongodb:
+    container_name: mongodb_server
+    image: "mongo:4.2"
+    ports:
+      - "65530:27017" # ExposedOn:DockerPort
+    volumes:
+      - ${MONGO_DB_PATH}:/data/db
