@@ -9,7 +9,7 @@ from catkin_pkg.python_setup import generate_distutils_setup
 setup_args = generate_distutils_setup(
     packages=['topic_store'],
     package_dir={'': 'src'},
-    install_requires=['numpy', 'rospkg', 'bson', 'pymongo']
+    install_requires=['numpy', 'rospkg', 'bson', 'pymongo', 'tqdm']
 )
 
 setup(**setup_args)

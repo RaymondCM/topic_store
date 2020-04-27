@@ -116,7 +116,11 @@ def __convert():
     # if output_file.exists():
     #     raise IOError("Output file '{}' already exists".format(output_file))
 
-    if input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
+    if input_file.suffix == ".bag":
+        raise NotImplementedError("Converting from ROS bags is not currently supported. "
+                                  "The conversion to ROS bags is lossy and requires adding meta data to reconstruct"
+                                  "the original .topic_store or database documents")
+    elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
         topic_store_to_ros_bag(input_file, output_file)
     elif input_file.suffix == ".yaml" and output_file.suffix == TopicStorage.suffix:
         mongodb_to_topic_store(input_file, output_file)
@@ -124,10 +128,6 @@ def __convert():
         mongodb_to_ros_bag(input_file, output_file)
     elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":
         topic_store_to_mongodb(input_file, output_file)
-    elif input_file.suffix == ".bag":
-        raise NotImplementedError("Converting from ROS bags is not currently supported. "
-                                  "The conversion to ROS bags is lossy and requires adding meta data to reconstruct"
-                                  "the original .topic_store or database documents")
     else:
         print("No conversion or migration for '{}' to '{}'".format(input_file, output_file))
 
