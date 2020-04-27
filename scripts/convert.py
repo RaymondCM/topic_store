@@ -21,6 +21,8 @@ from topic_store import TopicStorage, load, MongoClient, MongoDBParser
 
 def topic_store_to_mongodb(topic_store_file, scenario_file):
     scenario = ScenarioFileParser(scenario_file)
+    if scenario.storage["method"] != "database":
+        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
     print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, scenario.storage["uri"]))
     client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
     parser = MongoDBParser()
@@ -36,8 +38,28 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
             progress_bar.update()
 
 
+def mongodb_to_topic_store(scenario_file, topic_store_file):
+    scenario = ScenarioFileParser(scenario_file)
+    if scenario.storage["method"] != "database":
+        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
+    print("Converting MongoDB '{}' to '{}'".format(scenario.storage["uri"], topic_store_file.name))
+    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
+
+    storage = client.find()
+    count = storage.count()
+
+    topic_storage = TopicStorage(topic_store_file)
+
+    with tqdm(total=count) as progress_bar:
+        for item in storage:
+            topic_storage.append(item)
+            progress_bar.update()
+
+
 def mongodb_to_ros_bag(scenario_file, output_file):
     scenario = ScenarioFileParser(scenario_file)
+    if scenario.storage["method"] != "database":
+        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
     print("Converting MongoDB '{}' to ROS bag '{}'".format(scenario.storage["uri"], output_file.name))
     client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
     storage = client.find()
@@ -96,6 +118,8 @@ def __convert():
 
     if input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
         topic_store_to_ros_bag(input_file, output_file)
+    elif input_file.suffix == ".yaml" and output_file.suffix == TopicStorage.suffix:
+        mongodb_to_topic_store(input_file, output_file)
     elif input_file.suffix == ".yaml" and output_file.suffix == ".bag":
         mongodb_to_ros_bag(input_file, output_file)
     elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":

@@ -71,20 +71,36 @@ for item in stored_topics:
     print("As ROS Msgs", item.msgs)
 ```
 
-## Convert Filesystem to ROS bags
+## Convert to ROS bags
 
-`.topic_store` files can be converted to ROS bags.
+Filesystem `.topic_store` files can be converted to ROS bags.
 
 ```bash
 rosrun topic_store convert.py -i input.topic_store -o output.bag
 ```
 
-## Convert Filesystem to Database
+Database collections can be also be converted to ROS bags. Pass the scenario file that contains the database 
+connection/collection information as the input file.
 
-`.topic_store` files can be migrated to a MongoDB database. Pass the scenario file that contains the database connection information as the output file.
+```bash
+rosrun topic_store convert.py -i scenario_config.yaml -o output.bag
+```
+
+
+## Convert between Filesystem and Database
+
+Filesystem `.topic_store` files can be migrated to a MongoDB database. Pass the scenario file that contains the database 
+connection information as the output file.
 
 ```bash
 rosrun topic_store convert.py -i input.topic_store -o scenario_config.yaml
+```
+
+Database collections can be converted to a filesystem `.topic_store` file. Pass the scenario file that contains the database 
+connection information as the input file.
+
+```bash
+rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 ```
 
 # Implementation Road Map
@@ -95,8 +111,10 @@ rosrun topic_store convert.py -i input.topic_store -o scenario_config.yaml
 - [x] Parser for type compatibility between genpy.Message<->Python<->BSON<->MongoDB
 - [x] Scenario files for describing data collection behaviours
 - [x] File system storage method as a ROS bag replacement for better compatibility.
-- [x] Add rosbag compatibility (via convert.py)
-- [x] Add database storage method to scenarios
-- [x] Add covert to database compatibility (via convert.py)
-- [ ] Add credentials to database connection method
+- [x] Added database storage method to scenarios
+- [x] Added convert to database from filesystem compatibility (via convert.py)
+- [x] Added convert to filesystem from database compatibility (via convert.py)
+- [x] Added convert to ROS bag from filesystem compatibility (via convert.py)
+- [x] Added convert to ROS bag from database compatibility (via convert.py)
+- [x] Added credentials to database connection method via URI
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb

@@ -214,6 +214,7 @@ class TopicStore:
         return self.to_ros_msg_dict()
 
     def to_dict(self, parser=None):
+        # TODO: Cache these operations until self.__data_tree is updated
         if hasattr(parser, "parse_type"):
             return parser(self.__data_tree)
         return self.__data_tree
@@ -283,9 +284,11 @@ class TopicStore:
         return ros_msg_list
 
     def to_ros_msg_dict(self):
+        # TODO: Cache these operations until self.__data_tree is updated
         return TopicStore.__dict_to_ros_msg_dict(self.__data_tree)
 
     def to_ros_msg_list(self):
+        # TODO: Cache these operations until self.__data_tree is updated
         return list(TopicStore.__ros_msg_dict_to_list(self.to_ros_msg_dict()))
 
 
