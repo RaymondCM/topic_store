@@ -124,6 +124,10 @@ def __convert():
         mongodb_to_ros_bag(input_file, output_file)
     elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":
         topic_store_to_mongodb(input_file, output_file)
+    elif input_file.suffix == ".bag":
+        raise NotImplementedError("Converting from ROS bags is not currently supported. "
+                                  "The conversion to ROS bags is lossy and requires adding meta data to reconstruct"
+                                  "the original .topic_store or database documents")
     else:
         print("No conversion or migration for '{}' to '{}'".format(input_file, output_file))
 
