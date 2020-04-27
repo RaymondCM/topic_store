@@ -13,13 +13,12 @@ from threading import Event
 import actionlib
 import pathlib
 import rospy
-from topic_store.msg import CollectDataAction, CollectDataActionResult, CollectDataActionFeedback, CollectDataResult, \
-    CollectDataFeedback
 
-from database_manager.database import DatabaseClient
+from topic_store import MongoClient
 from topic_store.data import MongoDBParser, TopicStorage
+from topic_store.msg import CollectDataAction, CollectDataResult, \
+    CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
-
 
 
 class ScenarioFileParser:
@@ -92,11 +91,13 @@ class ScenarioFileParser:
 
 
 class ScenarioRunner:
-    def __init__(self, scenario_file, stabilise_time):
+    def __init__(self, scenario_file, stabilise_time, verbose=True):
         self.saved_n = 0
 
         self.scenario_file = scenario_file
         self.stabilise_time = stabilise_time
+        self.verbose = verbose
+        self.logger = print
         self.events = {}
 
         # Load Scenario
@@ -127,6 +128,10 @@ class ScenarioRunner:
 
         self.collection_method_init_function()
 
+    def log(self, message, **kwargs):
+        if self.verbose:
+            self.logger("\033[93mScenarioRunner\033[0m: {}".format(message), **kwargs)
+
     def init_way_point_action_server(self):
         def __request(goal_msg):
             success, save_msg = self.save()
@@ -134,10 +139,11 @@ class ScenarioRunner:
             feedback = CollectDataFeedback(save_msg)
             self.service_server.publish_feedback(feedback)
             (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
+
         # TODO: Is one action server per scenario runner the best way to do this?
         #   it may be better to use goal_msg.runner_name to determine which runner should save
         action_lib_server_name = self.scenario.collection["action_server_name"]
-        print("\n\t- Starting '{}' actionlib server".format(action_lib_server_name))
+        self.log("Starting '{}' actionlib server".format(action_lib_server_name))
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
@@ -150,7 +156,7 @@ class ScenarioRunner:
         delay = self.scenario.collection["timer_delay"]
         while not rospy.is_shutdown():
             self.save()
-            print("\n\t- Waiting for {}s before next data cycle".format(delay))
+            self.log("Waiting for {}s before next data cycle".format(delay))
             rospy.sleep(delay)
 
     def init_way_point_event(self):
@@ -162,46 +168,41 @@ class ScenarioRunner:
             self.events[event_name]["event"].wait()
             self.events[event_name]["event"].clear()
             self.save()
-            print("\n\t- Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
+            self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def init_save_database(self):
-        raise NotImplementedError("Save to database not yet implemented")
         self.mongodb_parser = MongoDBParser()
-        self.db_client = M()
+        self.db_client = MongoClient(uri=self.scenario.storage["uri"], collection=self.scenario.context)
+        self.log("Initialised saving to database {} @ '{}/{}'".format(self.scenario.storage["uri"],
+                                                                            self.db_client.name, self.scenario.context))
 
     def init_save_filesystem(self):
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         save_location = self.scenario.storage["location"]
         if not save_location or save_location in ["default", "auto", "topic_store"]:
-            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "filesystem" / "stored_topics"
+            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "stored_topics" / "filesystem"
         else:
             save_location = pathlib.Path(save_location)
         save_folder = save_location / self.scenario.context
-        print("\n\t- Configured save_location as '{}'".format(save_folder), end=' ')
+        self.log("Configured save_location as '{}'".format(save_folder))
         try:
             save_folder.mkdir(parents=True)
         except OSError as e:
             if e.errno != 17:  # File exists is okay
                 raise
-                # Get a unique filename
-        file_count = 0
-        prefix_str = formatted_datetime
-        save_file = save_folder / "{}.pkl".format(prefix_str, self.saved_n)
-        while save_file.exists():
-            prefix_str = "{}_{}".format(formatted_datetime, file_count)
-            save_file = save_folder / "{}_{}.pkl".format(prefix_str, self.saved_n)
-            file_count += 1
-        print("\n\t- Initialised saving to the filesystem at '{}'".format(save_file))
+
+        save_file = save_folder / "{}{}".format(formatted_datetime, TopicStorage.suffix)
         self.filesystem_storage = TopicStorage(save_file)
+        self.log("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path))
 
     def save_database(self, message_tree):
-        raise NotImplementedError("Save to database not yet implemented")
-        # db_document = message_tree.to_dict(parser=self.mongodb_parser)
-        # print("\n\t- Saving document to database: ", end='')
-        # self.db_client.import_dict(collection=self.scenario.context, dictionary=db_document)
+        db_document = self.mongodb_parser(message_tree.dict)
+        insert_result = self.db_client.insert_one(db_document)
+        self.log("Inserted document to database result='acknowledged={}, inserted_id={}'".format(
+            insert_result.acknowledged, insert_result.inserted_id))
 
     def save_filesystem(self, message_tree):
-        print("\n\t- Saving documents to file system n={}".format(self.saved_n), end='')
+        self.log("Saving documents to file system n={}".format(self.saved_n))
         self.saved_n += 1
         self.filesystem_storage.append(message_tree)
 
@@ -211,6 +212,6 @@ class ScenarioRunner:
         try:
             self.save_method_function(data)
         except Exception as e:
-            print("\n\t- Exception raised when saving! '{}'".format(e.message), end='')
+            self.log("Exception raised when saving! '{}'".format(e.message))
             return False, e.message
         return True, "Success!"

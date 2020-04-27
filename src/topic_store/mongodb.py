@@ -21,7 +21,7 @@ class MongoClient:
         if uri is None:
             uri = "mongodb://{}:{}/".format(host, port)
         self.client = pymongo.MongoClient(uri)
-        self._name = db_name
+        self.name = db_name
         self._db = self.client[db_name]
         self._collection_name = collection
 

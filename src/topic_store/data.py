@@ -305,8 +305,10 @@ class TopicStorage:
             if not path.stem:
                 raise IOError("Please pass a path to a file not '{}'".format(path))
         if path.exists() and path.suffix != TopicStorage.suffix:
-            raise IOError("File '{}' already exists and is not a {} file".format(path, TopicStorage.suffix))
+            raise IOError("File '{}' already exists".format(path))
         path = path.with_suffix(TopicStorage.suffix)
+        if path.suffix != TopicStorage.suffix:
+            raise IOError("File '{}' is not a '{}' file".format(path, TopicStorage.suffix))
         self.path = path
 
     def __write(self, topic_store):
