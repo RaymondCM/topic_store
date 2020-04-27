@@ -17,7 +17,7 @@ import rospy
 from genpy import Message as ROSMessage
 
 __all__ = ["TopicStorage", "TopicStoreCursor", "TopicStore", "MongoDBParser", "DefaultTypeParser",
-           "GenericPyROSMessage"]
+           "GenericPyROSMessage", "MongoDBReverseParser"]
 
 
 def time_as_ms(timestamp=None):
@@ -98,6 +98,22 @@ class MongoDBParser(DefaultTypeParser):
         except UnicodeError:
             s = bson.binary.Binary(s)
         return s
+
+
+class MongoDBReverseParser(DefaultTypeParser):
+    """Parser to ensure data types are supported in a database environment"""
+
+    def __init__(self):
+        DefaultTypeParser.__init__(self)
+        # Conversion functions for bytes arrays (represented as string in python <3) and times
+        self.add_converters({
+            unicode: str,  # Python2.7 is weird with strings and unicodes (just replace)
+            # bson.binary.Binary: self.bson_to_bytes,
+        })
+
+    @staticmethod
+    def bson_to_bytes(s):
+        return str(s)
 
 
 class GenericPyROSMessage:
@@ -224,7 +240,7 @@ class TopicStore:
                         # Support copying connection header for ROSBag support
                         if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
                             slot_names.append("_connection_header")
-                        for s in slot_names:
+                        for s in slot_names:  # or cls = msg_class(**v) after removing ros meta etc
                             setattr(cls, s, v[s])
                     # setattr(cls, "__ros_meta", v["_ros_meta"])
                     v = cls
@@ -279,12 +295,13 @@ class TopicStoreCursor(pymongo.cursor.Cursor):
         super(TopicStoreCursor, self).__init__(cursor.collection)
         # Copy the cursor to this parent class
         self._clone(True, cursor)
+        self.parser = MongoDBReverseParser()
 
     def __getitem__(self, item):
-        return TopicStore(super(TopicStoreCursor, self).__getitem__(item))
+        return TopicStore(self.parser(super(TopicStoreCursor, self).__getitem__(item)))
 
     def next(self):
-        return TopicStore(super(TopicStoreCursor, self).next())
+        return TopicStore(self.parser(super(TopicStoreCursor, self).next()))
 
     __next__ = next
 
