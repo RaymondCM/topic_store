@@ -76,7 +76,7 @@ class TestDatabase:
 
             # Get image message and check data is the same
             returned_im_document = client.find_by_id(im_result.inserted_id)
-            assert returned_im_document.msgs["image"] != im_document["image"], ""
+            assert returned_im_document.id == im_result.inserted_id
             retrieved_array = ros_numpy.numpify(returned_im_document.msgs["image"])
             np.testing.assert_equal(typed_array, retrieved_array)
 
