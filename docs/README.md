@@ -73,19 +73,16 @@ for item in stored_topics:
 
 ## Convert to ROS bags
 
-Filesystem `.topic_store` files can be converted to ROS bags.
+Filesystem `.topic_store` files and database collections can be converted to ROS bags.
 
 ```bash
+# Convert filesystem files to rosbags
 rosrun topic_store convert.py -i input.topic_store -o output.bag
-```
 
-Database collections can be also be converted to ROS bags. Pass the scenario file that contains the database 
-connection/collection information as the input file.
-
-```bash
+# Convert database collections to rosbags 
+# Pass scenario file containing connection and collection info as the input
 rosrun topic_store convert.py -i scenario_config.yaml -o output.bag
 ```
-
 
 ## Convert between Filesystem and Database
 
