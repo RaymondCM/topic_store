@@ -6,18 +6,14 @@
 from __future__ import absolute_import, division, print_function
 
 from datetime import datetime
-import pickle
 
 import bson
 import genpy
-import pathlib
-import pymongo
 import roslib.message
 import rospy
 from genpy import Message as ROSMessage
 
-__all__ = ["TopicStorage", "TopicStoreCursor", "TopicStore", "MongoDBParser", "DefaultTypeParser",
-           "GenericPyROSMessage", "MongoDBReverseParser"]
+__all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage", "MongoDBReverseParser"]
 
 
 def time_as_ms(timestamp=None):
@@ -41,6 +37,7 @@ class DefaultTypeParser:
         >>> parser.add_converters({int: float}) # Parser will now parse all ints as floats
         >>> print(parser([1, 1, 1])) # Output: [1.0, 1.0, 1.0]
     """
+
     def __init__(self):
         # Lookup of type conversions (overriding classes should update the dict)
         self._core_types = [dict, list, tuple, set]
@@ -191,6 +188,7 @@ class TopicStore:
     """Storage container for message data .dict() returns python objects, .msgs() returns ROS messages
     Useful for storing single documents in data bases (_id is prior generated)
     """
+
     def __init__(self, data_tree):
         if not isinstance(data_tree, dict):
             raise ValueError("Data tree must be a dict to construct a TopicStore")
@@ -300,93 +298,3 @@ class TopicStore:
     def to_ros_msg_list(self):
         # TODO: Cache these operations until self.__data_tree is updated
         return list(TopicStore.__ros_msg_dict_to_list(self.to_ros_msg_dict()))
-
-
-class TopicStoreCursor(pymongo.cursor.Cursor):
-    """Wrapper for a pymongo.cursor.Cursor object to return documents as the TopicStore"""
-    def __init__(self, cursor):
-        super(TopicStoreCursor, self).__init__(cursor.collection)
-        # Copy the cursor to this parent class
-        self._clone(True, cursor)
-        self.parser = MongoDBReverseParser()
-
-    def __getitem__(self, item):
-        return TopicStore(self.parser(super(TopicStoreCursor, self).__getitem__(item)))
-
-    def next(self):
-        return TopicStore(self.parser(super(TopicStoreCursor, self).next()))
-
-    __next__ = next
-
-
-class TopicStorage:
-    """Stores a history of TopicStore data trees for saving to the filesystem
-
-    Args:
-        path (str, pathlib.Path): Path to existing or new .topic_store file
-    """
-    PROTOCOL = 2  # Use pickle protocol 2
-    suffix = ".topic_store"
-
-    def __init__(self, path):
-        if not isinstance(path, (pathlib.Path, str)) or not path:
-            raise ValueError("TopicStorage path arg must be either (str, pathlib.Path) not '{}'".format(type(path)))
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-            if not path.stem:
-                raise IOError("Please pass a path to a file not '{}'".format(path))
-        if path.exists() and path.suffix != TopicStorage.suffix:
-            raise IOError("File '{}' already exists".format(path))
-        path = path.with_suffix(TopicStorage.suffix)
-        if path.suffix != TopicStorage.suffix:
-            raise IOError("File '{}' is not a '{}' file".format(path, TopicStorage.suffix))
-        self.path = path
-
-    def __write(self, topic_store):
-        if not self.path.exists():
-            try:
-                self.path.parent.mkdir(parents=True)
-            except OSError as e:
-                if e.errno != 17:  # File exists is okay
-                    raise
-        with self.path.open("ab" if self.path.exists() else "wb") as fh:
-            pickle.dump(topic_store, fh, protocol=TopicStorage.PROTOCOL)
-
-    def append(self, topic_store):
-        if not isinstance(topic_store, TopicStore):
-            raise ValueError("TopicStorage only supports TopicStore types")
-        self.__write(topic_store)
-
-    def __iter__(self):
-        if not self.path.exists():
-            raise StopIteration()
-        with self.path.open("rb") as fh:
-            while True:
-                try:
-                    yield pickle.load(fh)
-                except EOFError:
-                    break
-
-    def __getitem__(self, item=0):
-        if not self.path.exists():
-            raise IndexError("File '{}' has not been written too yet.".format(self.path))
-        with self.path.open("rb") as fh:
-            try:
-                if isinstance(item, slice):
-                    raise NotImplementedError("TopicStorage does not support slicing due to inefficient loading")
-                # First skip over N items (for item=2 skip 2 items to get to item 2)
-                print("TopicStorage[{}] should not be used as it has to load {} files before returning!".format(item,
-                                                                                                                item))
-                for _ in range(item):
-                    pickle.load(fh)
-                return pickle.load(fh)
-            except EOFError:
-                # In this case its an index error
-                raise IndexError("File '{}' does not contain {} elements".format(self.path, item))
-
-    def __len__(self):
-        print("len(TopicStorage) should not be used as it has to load all files before returning!")
-        count = 0
-        for _ in self:
-            count += 1
-        return count

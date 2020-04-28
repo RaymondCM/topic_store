@@ -9,13 +9,12 @@ import datetime
 import rospkg
 import yaml
 from threading import Event
-
-import actionlib
 import pathlib
 import rospy
+import actionlib
 
 from topic_store import MongoClient
-from topic_store.data import TopicStorage
+from topic_store.filesystem import TopicStorage
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
@@ -202,7 +201,7 @@ class ScenarioRunner:
     def save_filesystem(self, message_tree):
         self.log("Saving documents to file system n={}".format(self.saved_n))
         self.saved_n += 1
-        self.filesystem_storage.append(message_tree)
+        self.filesystem_storage.insert_one(message_tree)
 
     def save(self):
         """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""

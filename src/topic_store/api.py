@@ -4,10 +4,22 @@
 # Provides the interface to parse topic_store messages from file system/database. Exposed by topic_store.__init__
 
 import pathlib
+from abc import ABCMeta, abstractmethod
 
-__all__ = ["load"]
 
-from data import TopicStorage
+__all__ = ["load", "StorageApi"]
+
+
+class StorageApi:
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def insert_one(self, topic_store):
+        pass
+
+    @abstractmethod
+    def __iter__(self):
+        pass
 
 
 def load(path):
@@ -18,8 +30,5 @@ def load(path):
     Returns:
         TopicStore
     """
+    from topic_store.filesystem import TopicStorage
     return TopicStorage(path)
-
-
-def get_from_db(file_path):
-    raise NotImplementedError("TODO")

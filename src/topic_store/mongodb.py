@@ -7,12 +7,13 @@ from __future__ import absolute_import, division, print_function
 
 import pymongo
 
+from topic_store.api import StorageApi
+from topic_store.data import TopicStore, MongoDBReverseParser, MongoDBParser
+
 __all__ = ["MongoClient"]
 
-from topic_store.data import TopicStoreCursor, TopicStore, MongoDBReverseParser, MongoDBParser
 
-
-class MongoClient:
+class MongoClient(StorageApi):
     """Uses PyMongo and URI connection interface (https://docs.mongodb.com/manual/reference/connection-string/) to
         interface with a MongoDB server. Interface is the same as TopicStorage and pymongo utilities are wrapped in this
         class to ensure TopicStore objects are returned.
@@ -54,6 +55,8 @@ class MongoClient:
         """Returns TopicStoreCursor to all documents in the query"""
         return TopicStoreCursor(self.collection.find(*args, **kwargs))
 
+    __iter__ = find
+
     def find_one(self, query, *args, **kwargs):
         """Returns a matched TopicStore document"""
         return TopicStore(self.reverse_parser(self.collection.find_one(query, *args, **kwargs)))
@@ -77,6 +80,24 @@ class MongoClient:
     def aggregate(self, pipeline, *args, **kwargs):
         """Returns TopicStoreCursor of the aggregate pipeline match in a collection"""
         return TopicStoreCursor(self.collection.aggregate(pipeline, *args, **kwargs))
+
+
+class TopicStoreCursor(pymongo.cursor.Cursor):
+    """Wrapper for a pymongo.cursor.Cursor object to return documents as the TopicStore"""
+
+    def __init__(self, cursor):
+        super(TopicStoreCursor, self).__init__(cursor.collection)
+        # Copy the cursor to this parent class
+        self._clone(True, cursor)
+        self.parser = MongoDBReverseParser()
+
+    def __getitem__(self, item):
+        return TopicStore(self.parser(super(TopicStoreCursor, self).__getitem__(item)))
+
+    def next(self):
+        return TopicStore(self.parser(super(TopicStoreCursor, self).next()))
+
+    __next__ = next
 
 
 class MongoServer:

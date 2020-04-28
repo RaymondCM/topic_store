@@ -6,8 +6,9 @@
 import pathlib
 import rospy
 
+from topic_store.filesystem import TopicStorage
 from topic_store.store import SubscriberTree
-from topic_store.data import TopicStore, TopicStorage
+from topic_store.data import TopicStore
 
 
 class TestFilesystem:
@@ -43,7 +44,7 @@ class TestFilesystem:
         # Add a message and check
         write_n = 5
         for _ in range(write_n):
-            storage.append(messages)
+            storage.insert_one(messages)
 
         # Try slicing which isn't supported
         try:
@@ -68,7 +69,7 @@ class TestFilesystem:
 
         # Check loading
         storage = TopicStorage(test_file)
-        storage.append(TopicStore({0: 0}))
+        storage.insert_one(TopicStore({0: 0}))
         stored_items += 1
         for s in storage:
             print(s)

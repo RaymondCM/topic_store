@@ -1,6 +1,7 @@
 import pytest
 
-from topic_store import MongoClient, TopicStore
+from topic_store.data import TopicStore
+from topic_store.mongodb import MongoClient
 import rospy
 import ros_numpy
 import random
@@ -35,6 +36,10 @@ class TestDatabase:
         # Print all documents in the collection
         cursor = client.find()
         for x in cursor:
+            print("Doc:\n\t-As Structure: {}\n\t-As Dict: {}\n\t-As ROS Msgs: {}".format(str(x), x.dict, x.msgs))
+
+        # Or print using the same API as TopicStorage
+        for x in client:
             print("Doc:\n\t-As Structure: {}\n\t-As Dict: {}\n\t-As ROS Msgs: {}".format(str(x), x.dict, x.msgs))
 
         # Cleanup test by deleting document
