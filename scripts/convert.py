@@ -16,7 +16,7 @@ import rospy
 from tqdm import tqdm
 
 from topic_store.scenario import ScenarioFileParser
-from topic_store import TopicStorage, load, MongoClient, MongoDBParser
+from topic_store import TopicStorage, load, MongoClient
 
 
 def topic_store_to_mongodb(topic_store_file, scenario_file):
@@ -25,13 +25,13 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
         raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
     print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, scenario.storage["uri"]))
     client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
-    parser = MongoDBParser()
+
     storage = load(topic_store_file)
     count = len(storage)  # TODO: very slow operation
     with tqdm(total=count) as progress_bar:
         for item in storage:
             try:
-                client.insert_one(item.to_dict(parser))
+                client.insert_one(item)
             except pymongo.errors.DuplicateKeyError:
                 print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, client.name,
                                                                                                scenario.context))

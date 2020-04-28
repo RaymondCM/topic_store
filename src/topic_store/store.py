@@ -10,7 +10,7 @@ import datetime
 import rospy
 import rostopic
 
-from topic_store.data import TopicStore, GenericPyROSMessage
+from topic_store.data import TopicStore
 
 __all__ = ["SubscriberTree", "AutoSubscriber"]
 
@@ -31,19 +31,20 @@ class AutoSubscriber:
                                            queue_size=1)
 
 
-class AutoLogger(GenericPyROSMessage):
-    """Automatically stores the data from a topic and converts ROS types to python types i.e.
-        std_msgs/Header -> dict{frame_id: "", etc}"""
-
+class AutoLogger:
+    """Automatically stores the data from a topic or YAML"""
     def __init__(self, data_to_store, callback=None):
         # Data to store is a ROS topic string (starts with /, a bit hacky) so store the topic result
         if isinstance(data_to_store, str) and data_to_store.startswith('/'):  # TODO: Replace this with topic lookup
             if callback is None or not callable(callback):
                 callback = self.save
             self.subscriber = AutoSubscriber(data_to_store, callback=callback)
-            GenericPyROSMessage.__init__(self, data_to_store)
+            self.data = None
         else:
-            GenericPyROSMessage.__init__(self, data_to_store)
+            self.data = data_to_store
+
+    def save(self, data):
+        self.data = data
 
 
 class SubscriberTree:

@@ -15,7 +15,7 @@ import pathlib
 import rospy
 
 from topic_store import MongoClient
-from topic_store.data import MongoDBParser, TopicStorage
+from topic_store.data import TopicStorage
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
@@ -171,10 +171,9 @@ class ScenarioRunner:
             self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def init_save_database(self):
-        self.mongodb_parser = MongoDBParser()
         self.db_client = MongoClient(uri=self.scenario.storage["uri"], collection=self.scenario.context)
         self.log("Initialised saving to database {} @ '{}/{}'".format(self.scenario.storage["uri"],
-                                                                            self.db_client.name, self.scenario.context))
+                                                                      self.db_client.name, self.scenario.context))
 
     def init_save_filesystem(self):
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -196,8 +195,7 @@ class ScenarioRunner:
         self.log("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path))
 
     def save_database(self, message_tree):
-        db_document = self.mongodb_parser(message_tree.dict)
-        insert_result = self.db_client.insert_one(db_document)
+        insert_result = self.db_client.insert_one(message_tree)
         self.log("Inserted document to database result='acknowledged={}, inserted_id={}'".format(
             insert_result.acknowledged, insert_result.inserted_id))
 

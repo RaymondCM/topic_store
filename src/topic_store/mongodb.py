@@ -9,7 +9,7 @@ import pymongo
 
 __all__ = ["MongoClient"]
 
-from topic_store.data import TopicStoreCursor, TopicStore, MongoDBReverseParser
+from topic_store.data import TopicStoreCursor, TopicStore, MongoDBReverseParser, MongoDBParser
 
 
 class MongoClient:
@@ -24,6 +24,7 @@ class MongoClient:
         self.name = db_name
         self._db = self.client[db_name]
         self._collection_name = collection
+        self.parser = MongoDBParser()  # Adds support for unicode to python str etc
         self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
 
     @property
@@ -31,24 +32,22 @@ class MongoClient:
         """Expose collection property so user has access to all PyMongo functionality"""
         return self._db[self._collection_name]
 
-    def insert_one(self, document):
-        """Insert a dictionary as document
-
-        Args:
-            document (dict): Dict of key: value pairs to store as a document
+    def insert_one(self, topic_store):
+        """Inserts a topic store object into the database
 
         Returns:
             pymongo.results.InsertOneResult: Contains the ID for the inserted document
         """
-        return self.collection.insert_one(document.copy())
+        if not isinstance(topic_store, TopicStore):
+            raise ValueError("Can only insert TopicStore items into the database not '{}'".format(type(topic_store)))
+        return self.collection.insert_one(self.parser(topic_store.dict.copy()))
 
     def update_one(self, query, update, *args, **kwargs):
         """Updates a single document matched by query"""
         return self.collection.update_one(query, update, *args, **kwargs)
 
     def update_one_by_id(self, id_str, **kwargs):
-        """Update a document field by ID changes all keys in kwargs
-        """
+        """Update a document field by ID changes all keys in kwargs"""
         return self.update_one(query={'_id': id_str}, update={"$set": kwargs})
 
     def find(self, *args, **kwargs):
@@ -80,37 +79,21 @@ class MongoClient:
         return TopicStoreCursor(self.collection.aggregate(pipeline, *args, **kwargs))
 
 
-def mongodb_tests():
-    import rospy
-    import random
-    rospy.init_node("mongodb_tests", anonymous=True)
+class MongoServer:
+    def __init__(self, debug=False):
+        if not debug:
+            raise NotImplementedError("Server is not yet implemented. Please call start_database.launch.")
+        import subprocess
+        import rospkg
+        import pathlib
+        import rospy
+        pkg_root = pathlib.Path(rospkg.RosPack().get_path("topic_store"))
+        script_path = pkg_root / "docker/docker_compose_up_safe.sh"
+        db_default = pkg_root / "stored_topics/database"
+        rospy.on_shutdown(self._on_shutdown)
+        self.process = subprocess.Popen(['bash', script_path], env={"MONGO_DB_PATH": db_default})
 
-    client = MongoClient()
+    def _on_shutdown(self):
+        self.process.wait()
 
-    # Insert a test document
-    insert_result = client.insert_one({"name": "test_name", "number": 1})
-
-    # Retrieve the inserted document
-    inserted_document = client.find_by_id(insert_result.inserted_id)
-
-    # Update the document name and number fields
-    new_name = ''.join(random.sample('raymond', 7))
-    new_number = random.randint(0, 100)
-    update_result = client.update_one_by_id(inserted_document.id, name=new_name, number=new_number)
-
-    inserted_document_after_update = client.find_by_id(insert_result.inserted_id)
-    assert inserted_document.id == inserted_document_after_update.id
-    assert inserted_document_after_update.dict["number"] == new_number
-    assert inserted_document_after_update.dict["name"] == new_name
-
-    # Print all documents in the collection
-    cursor = client.find()
-    for x in cursor:
-        print("Doc:\n\t-As Structure: {}\n\t-As Dict: {}\n\t-As ROS Msgs: {}".format(str(x), x.dict, x.msgs))
-
-    # Cleanup test by deleting document
-    delete_result = client.delete_by_id(insert_result.inserted_id)
-
-
-if __name__ == '__main__':
-    mongodb_tests()
+    __del__ = _on_shutdown
