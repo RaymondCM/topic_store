@@ -33,7 +33,7 @@ def ros_time_as_ms(timestamp=None):
 
 
 class DefaultTypeParser:
-    """Type coercion utility class
+    """Type coercion utility class.
 
         Examples:
         >>> parser = DefaultTypeParser()
@@ -45,14 +45,19 @@ class DefaultTypeParser:
         # Lookup of type conversions (overriding classes should update the dict)
         self._core_types = [dict, list, tuple, set]
         self._type_converters = {t: self.__parse_dict if t is dict else self.__parse_list for t in self._core_types}
+        self._instance_converters = ()
+        self.add_converters({ROSMessage: GenericPyROSMessage.as_dict, genpy.Time: GenericPyROSMessage.as_dict,
+                             genpy.Duration: GenericPyROSMessage.as_dict}, instance=True)
 
-    def add_converters(self, type_to_converter_map, replace_existing=True):
+    def add_converters(self, type_to_converter_map, instance=False, replace_existing=True):
         """Adds more conversion functions. Must pass a dict of type: converter function pairs.
 
         Inheriting classes can use this method to support other type conversions by default.
 
         Args:
             type_to_converter_map (dict): Dict of type to callable returning a new type
+            instance (bool): If true the converter will check these types with isinstance(data, type) if direct type
+                doesn't have a conversion
             replace_existing: If false will raise a ValueError if a mapping already exists
         """
         for t in type_to_converter_map.keys():
@@ -63,6 +68,8 @@ class DefaultTypeParser:
                 if key in self._type_converters:
                     raise ValueError("Mapping from '{}' already exists by '{}'".format(key, self._type_converters[key]))
         self._type_converters.update(type_to_converter_map)
+        if instance:
+            self._instance_converters = self._instance_converters + tuple(type_to_converter_map.keys())
 
     def __call__(self, data):
         return self.parse_type(data)
@@ -70,6 +77,10 @@ class DefaultTypeParser:
     def parse_type(self, data):
         if type(data) in self._type_converters:
             return self._type_converters[type(data)](data)
+        elif isinstance(data, self._instance_converters):
+            for i in self._instance_converters:
+                if isinstance(data, i):
+                    return self._type_converters[i](data)
         return data
 
     def __parse_dict(self, data):
@@ -107,13 +118,13 @@ class MongoDBReverseParser(DefaultTypeParser):
         DefaultTypeParser.__init__(self)
         # Conversion functions for bytes arrays (represented as string in python <3) and times
         self.add_converters({
-            unicode: str,  # Python2.7 is weird with strings and unicodes (just replace)
+            unicode: str,  # Python2.7 is weird with strings and unicode (just replace)
             # bson.binary.Binary: self.bson_to_bytes,
         })
 
-    @staticmethod
-    def bson_to_bytes(s):
-        return str(s)
+    # @staticmethod
+    # def bson_to_bytes(s):
+    #     return str(s)
 
 
 class GenericPyROSMessage:
@@ -121,6 +132,10 @@ class GenericPyROSMessage:
 
     def __init__(self, data):
         self._data = data
+
+    @staticmethod
+    def as_dict(ros_msg):
+        return GenericPyROSMessage(ros_msg).data
 
     @property
     def data(self):
@@ -142,7 +157,7 @@ class GenericPyROSMessage:
         slots = {k: getattr(data, k) for k in slot_names}
 
         # If the message recursively call GenericROSPyMessage to convert all sub-ROS msgs
-        msg_dict = {k: GenericPyROSMessage(v).data for k, v in slots.items()}
+        msg_dict = {k: GenericPyROSMessage.as_dict(v) for k, v in slots.items()}
 
         msg_type = getattr(data, "_type", None)
         if msg_type is None:
@@ -176,11 +191,11 @@ class TopicStore:
     """Storage container for message data .dict() returns python objects, .msgs() returns ROS messages
     Useful for storing single documents in data bases (_id is prior generated)
     """
-
     def __init__(self, data_tree):
         if not isinstance(data_tree, dict):
             raise ValueError("Data tree must be a dict to construct a TopicStore")
-        self.__data_tree = data_tree
+        # Ensure passed data tree does not contain ROS msgs
+        self.__data_tree = DefaultTypeParser()(data_tree)
         if "_id" not in self.__data_tree:
             self.__data_tree["_id"] = bson.ObjectId()
         if "_ts_meta" not in self.__data_tree:
@@ -200,7 +215,8 @@ class TopicStore:
 
     @property
     def dict(self):
-        return self.to_dict()
+        # TODO: Cache these operations until self.__data_tree is updated
+        return self.__data_tree
 
     def __getitem__(self, item):
         return self.dict[item]
@@ -212,12 +228,6 @@ class TopicStore:
     @property
     def msgs(self):
         return self.to_ros_msg_dict()
-
-    def to_dict(self, parser=None):
-        # TODO: Cache these operations until self.__data_tree is updated
-        if hasattr(parser, "parse_type"):
-            return parser(self.__data_tree)
-        return self.__data_tree
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
@@ -315,6 +325,7 @@ class TopicStorage:
     Args:
         path (str, pathlib.Path): Path to existing or new .topic_store file
     """
+    PROTOCOL = 2  # Use pickle protocol 2
     suffix = ".topic_store"
 
     def __init__(self, path):
@@ -339,7 +350,7 @@ class TopicStorage:
                 if e.errno != 17:  # File exists is okay
                     raise
         with self.path.open("ab" if self.path.exists() else "wb") as fh:
-            pickle.dump(topic_store, fh, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(topic_store, fh, protocol=TopicStorage.PROTOCOL)
 
     def append(self, topic_store):
         if not isinstance(topic_store, TopicStore):
