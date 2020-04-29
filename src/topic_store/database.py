@@ -73,6 +73,16 @@ class MongoStorage(Storage):
         """Returns a matched TopicStore document"""
         return self.find_one({"_id": id_str}, *args, **kwargs)
 
+    def find_by_session_id(self, session_id, *args, **kwargs):
+        """Returns matched TopicStore documents collected in the same session"""
+        return self.find({"_ts_meta.session": session_id}, *args, **kwargs)
+
+    def get_unique_sessions(self):
+        """Returns IDs of unique data collections scenario runs in the collection"""
+        return list(x["_id"] for x in self.collection.aggregate([{
+            '$match': {'_ts_meta.session': {'$exists': True}}}, {'$group': {'_id': '$_ts_meta.session'}}
+        ]))
+
     def delete_many(self, query, *args, **kwargs):
         """Deletes matched documents"""
         return self.collection.delete_many(query, *args, **kwargs)
@@ -85,25 +95,24 @@ class MongoStorage(Storage):
         """Deletes a document by id"""
         return self.delete_one({"_id": id_str}, *args, **kwargs)
 
-    def aggregate(self, pipeline, *args, **kwargs):
+    def __aggregate(self, pipeline, *args, **kwargs):
         """Returns TopicStoreCursor of the aggregate pipeline match in a collection"""
-        return TopicStoreCursor(self.collection.aggregate(pipeline, *args, **kwargs))
+        raise NotImplementedError("Not yet implemented since aggregate pipelines can be non TopicStore compatible docs")
+        # return TopicStoreCursor(self.collection.aggregate(pipeline, *args, **kwargs))
 
 
-class TopicStoreCursor(pymongo.cursor.Cursor):
+class TopicStoreCursor:
     """Wrapper for a pymongo.cursor.Cursor object to return documents as the TopicStore"""
-
     def __init__(self, cursor):
-        super(TopicStoreCursor, self).__init__(cursor.collection)
         # Copy the cursor to this parent class
-        self._clone(True, cursor)
         self.parser = MongoDBReverseParser()
+        self.cursor = cursor
 
     def __getitem__(self, item):
-        return TopicStore(self.parser(super(TopicStoreCursor, self).__getitem__(item)))
+        return TopicStore(self.parser(self.cursor.__getitem__(item)))
 
     def next(self):
-        return TopicStore(self.parser(super(TopicStoreCursor, self).next()))
+        return TopicStore(self.parser(self.cursor.next()))
 
     __next__ = next
 

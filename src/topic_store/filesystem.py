@@ -55,7 +55,7 @@ class TopicStorage(Storage):
                 except EOFError:
                     break
 
-    # TODO: Add these methods when a more efficient storage method used
+    # Add these methods back when a more efficient storage method used
     # def __getitem__(self, item=0):
     #     if not self.path.exists():
     #         raise IndexError("File '{}' has not been written too yet.".format(self.path))
