@@ -224,14 +224,7 @@ class TopicStore:
             self.__msgs = TopicStore.__dict_to_ros_msg_dict(self.dict)
         return self.__msgs
 
-    # TopicStore()[item] returns python type
-    def __getitem__(self, item):
-        return self.dict[item]
-
-    # TopicStore()(item) returns ros type
-    def __call__(self, item):
-        return self.msgs[item]
-
+    # Expose document ID and meta fields
     @property
     def id(self):
         return self["_id"]
@@ -247,6 +240,14 @@ class TopicStore:
     @property
     def ros_time(self):
         return self["_ts_meta"]["ros_time"]
+
+    # TopicStore()[item] returns python type
+    def __getitem__(self, item):
+        return self.dict[item]
+
+    # TopicStore()(item) returns ros type
+    def __call__(self, item):
+        return self.msgs[item]
 
     def __repr__(self):
         return str({k: type(self.msgs[k]) for k in self.msgs.keys()})
@@ -291,29 +292,6 @@ class TopicStore:
                 yield value
             for ret in TopicStore.__ros_msg_dict_to_list(value):
                 yield ret
-
-    @staticmethod
-    def __dict_to_ros_msg_list(ros_dict):
-        ros_msg_list = []
-
-        for k, v in ros_dict.items():
-            if isinstance(v, dict):
-                v = TopicStore.__dict_to_ros_msg_list(v)
-                if "_ros_meta" in v:
-                    msg_type = v["_ros_meta"]["type"]
-                    msg_class = roslib.message.get_message_class(msg_type)
-                    if not msg_class:
-                        raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
-                    cls = msg_class()
-                    slot_names = list(msg_class.__slots__)
-                    if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
-                        slot_names.append("_connection_header")
-                    for s in slot_names:
-                        setattr(cls, s, v[s])
-                    v = cls
-            ros_msg_list.append(v)
-
-        return ros_msg_list
 
     def to_ros_msg_list(self):
         # TODO: Cache this operation until self.__data_tree updated
