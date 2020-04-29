@@ -15,6 +15,8 @@ from genpy import Message as ROSMessage
 
 __all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage", "MongoDBReverseParser"]
 
+_session_id = bson.ObjectId()
+
 
 def time_as_ms(timestamp=None):
     if timestamp is None:
@@ -26,6 +28,15 @@ def ros_time_as_ms(timestamp=None):
     if timestamp is None:
         timestamp = rospy.Time.now()
     return timestamp.to_sec()
+
+
+def idx_of_instance(obj, instance_checks):
+    if isinstance(instance_checks, tuple):
+        instance_checks = (instance_checks,)
+    for idx, _type in enumerate(instance_checks):
+        if isinstance(obj, _type):
+            return idx
+    return -1
 
 
 class DefaultTypeParser:
@@ -72,12 +83,16 @@ class DefaultTypeParser:
         return self.parse_type(data)
 
     def parse_type(self, data):
+        # Explicit conversion
         if type(data) in self._type_converters:
             return self._type_converters[type(data)](data)
-        elif isinstance(data, self._instance_converters):
-            for i in self._instance_converters:
-                if isinstance(data, i):
-                    return self._type_converters[i](data)
+
+        # If no explicit type, look for instance of
+        instance_idx = idx_of_instance(data, self._instance_converters)
+        if instance_idx != -1:
+            return self._type_converters[self._instance_converters[instance_idx]](data)
+
+        # No conversion just return the original data
         return data
 
     def __parse_dict(self, data):
@@ -197,7 +212,17 @@ class TopicStore:
         if "_id" not in self.__data_tree:
             self.__data_tree["_id"] = bson.ObjectId()
         if "_ts_meta" not in self.__data_tree:
-            self.__data_tree["_ts_meta"] = dict(sys_time=time_as_ms(), ros_time=ros_time_as_ms())
+            self.__data_tree["_ts_meta"] = dict(session=_session_id, sys_time=time_as_ms(), ros_time=ros_time_as_ms())
+        # Cache for dict to ROS message parsing
+        self.__msgs = None
+
+    # TopicStore()[item] returns python type
+    def __getitem__(self, item):
+        return self.dict[item]
+
+    # TopicStore()(item) returns ros type
+    def __call__(self, item):
+        return self.msgs[item]
 
     @property
     def sys_time(self):
@@ -213,19 +238,16 @@ class TopicStore:
 
     @property
     def dict(self):
-        # TODO: Cache these operations until self.__data_tree is updated
         return self.__data_tree
 
-    def __getitem__(self, item):
-        return self.dict[item]
-
     def __str__(self):
-        python_dict = self.dict
-        return str({k: type(python_dict[k]) for k in python_dict.keys()})
+        return str({k: type(self.dict[k]) for k in self.dict.keys()})
 
     @property
     def msgs(self):
-        return self.to_ros_msg_dict()
+        if self.__msgs is None:
+            self.__msgs = self.to_ros_msg_dict()
+        return self.__msgs
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
@@ -297,4 +319,4 @@ class TopicStore:
 
     def to_ros_msg_list(self):
         # TODO: Cache these operations until self.__data_tree is updated
-        return list(TopicStore.__ros_msg_dict_to_list(self.to_ros_msg_dict()))
+        return list(TopicStore.__ros_msg_dict_to_list(self.msgs))
