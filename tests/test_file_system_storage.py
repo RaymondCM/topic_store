@@ -32,7 +32,7 @@ class TestFilesystem:
 
         # Try getting an element that doesn't exist
         try:
-            s = storage[0]
+            s = list(storage)[0]
             raise AssertionError()
         except IndexError:
             pass
@@ -46,26 +46,12 @@ class TestFilesystem:
         for _ in range(write_n):
             storage.insert_one(messages)
 
-        # Try slicing which isn't supported
-        try:
-            _ = storage[1:3]
-            raise AssertionError()
-        except NotImplementedError:
-            pass
-
-        # Try getting a valid index and getting the len
-        written_messages = None
-        for i in range(len(storage)):
-            written_messages = storage[i]
-        assert isinstance(written_messages, TopicStore)
-
         # Check iterator indexing
         stored_items = write_n
         read_items = 0
         for _ in storage:
             read_items += 1
         assert read_items == stored_items
-        assert len(storage) == stored_items
 
         # Check loading
         storage = TopicStorage(test_file)
@@ -77,9 +63,10 @@ class TestFilesystem:
         # Test API
         from topic_store import load
         loaded_messages = load(test_file)
-        python_dict = loaded_messages[0].dict
-        ros_dict = loaded_messages[0].msgs
-        assert len(loaded_messages) == stored_items
+        read_items = 0
+        for _ in storage:
+            read_items += 1
+        assert read_items == stored_items
 
         print("All TopicStorage tests passed!")
 

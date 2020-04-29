@@ -43,7 +43,7 @@ class TopicStorage(Storage):
                 if e.errno != 17:  # File exists is okay
                     raise
         with self.path.open("ab" if self.path.exists() else "wb") as fh:
-            pickle.dump(topic_store, fh, protocol=TopicStorage.PROTOCOL)
+            pickle.dump(topic_store.dict, fh, protocol=TopicStorage.PROTOCOL)
 
     def __iter__(self):
         if not self.path.exists():
@@ -51,30 +51,31 @@ class TopicStorage(Storage):
         with self.path.open("rb") as fh:
             while True:
                 try:
-                    yield pickle.load(fh)
+                    yield TopicStore(data_tree=pickle.load(fh))
                 except EOFError:
                     break
 
-    def __getitem__(self, item=0):
-        if not self.path.exists():
-            raise IndexError("File '{}' has not been written too yet.".format(self.path))
-        with self.path.open("rb") as fh:
-            try:
-                if isinstance(item, slice):
-                    raise NotImplementedError("TopicStorage does not support slicing due to inefficient loading")
-                # First skip over N items (for item=2 skip 2 items to get to item 2)
-                print("TopicStorage[{}] should not be used as it has to load {} files before returning!".format(item,
-                                                                                                                item))
-                for _ in range(item):
-                    pickle.load(fh)
-                return pickle.load(fh)
-            except EOFError:
-                # In this case its an index error
-                raise IndexError("File '{}' does not contain {} elements".format(self.path, item))
-
-    def __len__(self):
-        print("len(TopicStorage) should not be used as it has to load all files before returning!")
-        count = 0
-        for _ in self:
-            count += 1
-        return count
+    # TODO: Add these methods when a more efficient storage method used
+    # def __getitem__(self, item=0):
+    #     if not self.path.exists():
+    #         raise IndexError("File '{}' has not been written too yet.".format(self.path))
+    #     with self.path.open("rb") as fh:
+    #         try:
+    #             if isinstance(item, slice):
+    #                 raise NotImplementedError("TopicStorage does not support slicing due to inefficient loading")
+    #             # First skip over N items (for item=2 skip 2 items to get to item 2)
+    #             print("TopicStorage[{}] should not be used as it has to load {} files before returning!".format(item,
+    #                                                                                                             item))
+    #             for _ in range(item):
+    #                 pickle.load(fh)
+    #             return pickle.load(fh)
+    #         except EOFError:
+    #             # In this case its an index error
+    #             raise IndexError("File '{}' does not contain {} elements".format(self.path, item))
+    #
+    # def __len__(self):
+    #     print("len(TopicStorage) should not be used as it has to load all files before returning!")
+    #     count = 0
+    #     for _ in self:
+    #         count += 1
+    #     return count
