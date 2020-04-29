@@ -28,11 +28,12 @@ class MongoStorage(Storage):
         self.parser = MongoDBParser()  # Adds support for unicode to python str etc
         self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
         self.name = "topic_store"
-        self._collection_name = collection
+        self.uri = uri
+        self.collection_name = collection
 
-        self.client = pymongo.MongoClient(uri)
+        self.client = pymongo.MongoClient(self.uri)
         self._db = self.client[self.name]
-        self.collection = self._db[self._collection_name]
+        self.collection = self._db[self.collection_name]
 
     @staticmethod
     def load(path):
@@ -79,8 +80,9 @@ class MongoStorage(Storage):
 
     def get_unique_sessions(self):
         """Returns IDs of unique data collections scenario runs in the collection"""
-        return list(x["_id"] for x in self.collection.aggregate([{
-            '$match': {'_ts_meta.session': {'$exists': True}}}, {'$group': {'_id': '$_ts_meta.session'}}
+        return dict((x["_id"], {"time": x["sys_time"], "count": x["count"]}) for x in self.collection.aggregate([{
+            '$match': {'_ts_meta.session': {'$exists': True}}},
+            {'$group': {'_id': '$_ts_meta.session', 'sys_time': {'$first': "$_ts_meta.sys_time"}, "count": {'$sum': 1}}}
         ]))
 
     def delete_many(self, query, *args, **kwargs):

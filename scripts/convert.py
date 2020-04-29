@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
+from datetime import datetime
 
 import pathlib
 import pymongo
@@ -16,17 +17,15 @@ import rospy
 from tqdm import tqdm
 
 from topic_store.scenario import ScenarioFileParser
-from topic_store import TopicStorage, load, MongoClient
+from topic_store.filesystem import TopicStorage
+from topic_store.database import MongoStorage
 
 
 def topic_store_to_mongodb(topic_store_file, scenario_file):
-    scenario = ScenarioFileParser(scenario_file)
-    if scenario.storage["method"] != "database":
-        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
-    print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, scenario.storage["uri"]))
-    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
+    client = MongoStorage.load(scenario_file)
+    print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, client.uri))
 
-    storage = load(topic_store_file)
+    storage = TopicStorage.load(topic_store_file)
     count = len(storage)  # TODO: very slow operation
     with tqdm(total=count) as progress_bar:
         for item in storage:
@@ -34,25 +33,44 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
                 client.insert_one(item)
             except pymongo.errors.DuplicateKeyError:
                 print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, client.name,
-                                                                                               scenario.context))
+                                                                                               client.collection_name))
             progress_bar.update()
 
 
-def mongodb_to_topic_store(scenario_file, topic_store_file):
-    scenario = ScenarioFileParser(scenario_file)
-    if scenario.storage["method"] != "database":
-        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
-    print("Converting MongoDB '{}' to '{}'".format(scenario.storage["uri"], topic_store_file.name))
-    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
+def get_mongo_storage_by_session(client):
+    sessions = client.get_unique_sessions()
+    if len(sessions) > 1:
+        s_lut = sorted([{
+            "id": sid, "on": datetime.fromtimestamp(data["time"]).strftime('%Y-%m-%d %H:%M:%S'),
+            "float_time": data["time"], "count": data["count"]
+        } for sid, data in sessions.items()], key=lambda x: x["float_time"])
+        print("Collection {}/{} contains data from:\n{}".format(client.name, client.collection_name, ''.join(
+            ["\t{}. Session {} on {} containing {} documents\n".format(i, s["id"], s["on"], s["count"]) for i, s in
+             enumerate(s_lut)])))
+        while True:
+            try:
+                char = raw_input("Please enter a number or enter for all: ")
+                if char is "":
+                    return client.find()
+                return client.find_by_session_id(s_lut[int(char)]["id"])
+            except (EOFError, ValueError, IndexError):
+                print("Please choose an appropriate option")
+                continue
+    return client.find()
 
-    storage = client.find()
-    count = storage.count()
+
+def mongodb_to_topic_store(scenario_file, topic_store_file):
+    client = MongoStorage.load(scenario_file)
+    print("Converting MongoDB '{}' to '{}'".format(client.uri, topic_store_file.name))
+
+    storage = get_mongo_storage_by_session(client)
+    count = storage.cursor.count()
 
     topic_storage = TopicStorage(topic_store_file)
 
     with tqdm(total=count) as progress_bar:
         for item in storage:
-            topic_storage.append(item)
+            topic_storage.insert_one(item)
             progress_bar.update()
 
 
@@ -61,9 +79,10 @@ def mongodb_to_ros_bag(scenario_file, output_file):
     if scenario.storage["method"] != "database":
         raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
     print("Converting MongoDB '{}' to ROS bag '{}'".format(scenario.storage["uri"], output_file.name))
-    client = MongoClient(uri=scenario.storage["uri"], collection=scenario.context)
-    storage = client.find()
-    count = storage.count()
+    client = MongoStorage(uri=scenario.storage["uri"], collection=scenario.context)
+
+    storage = get_mongo_storage_by_session(client)
+    count = storage.cursor.count()
 
     ros_bag = rosbag.Bag(str(output_file), 'w')
 
@@ -84,9 +103,10 @@ def mongodb_to_ros_bag(scenario_file, output_file):
 
 def topic_store_to_ros_bag(topic_store_file, output_file):
     print("Converting '{}' to ROS bag '{}'".format(topic_store_file.name, output_file.name))
-    storage = load(topic_store_file)
+    storage = TopicStorage.load(topic_store_file)
     count = len(storage)  # TODO: very slow operation
     ros_bag = rosbag.Bag(str(output_file), 'w')
+
     try:
         with tqdm(total=count) as progress_bar:
             for item in storage:
@@ -104,8 +124,8 @@ def topic_store_to_ros_bag(topic_store_file, output_file):
 
 def __convert():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", help="Input File",  type=str, required=True)
-    parser.add_argument("-o", "--output", help="Output File",  type=str, required=True)
+    parser.add_argument("-i", "--input", help="Input File", type=str, required=True)
+    parser.add_argument("-o", "--output", help="Output File", type=str, required=True)
     args = parser.parse_args()
 
     input_file = pathlib.Path(args.input)
