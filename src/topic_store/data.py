@@ -214,6 +214,16 @@ class TopicStore:
         # Cache for dict to ROS message parsing
         self.__msgs = None
 
+    @property
+    def dict(self):
+        return self.__data_tree
+
+    @property
+    def msgs(self):
+        if self.__msgs is None:
+            self.__msgs = self.to_ros_msg_dict()
+        return self.__msgs
+
     # TopicStore()[item] returns python type
     def __getitem__(self, item):
         return self.dict[item]
@@ -223,29 +233,23 @@ class TopicStore:
         return self.msgs[item]
 
     @property
+    def id(self):
+        return self["_id"]
+
+    @property
+    def session(self):
+        return self["_ts_meta"]["session"]
+
+    @property
     def sys_time(self):
-        return self.__data_tree["_ts_meta"]["sys_time"]
+        return self["_ts_meta"]["sys_time"]
 
     @property
     def ros_time(self):
-        return self.__data_tree["_ts_meta"]["sys_time"]
-
-    @property
-    def id(self):
-        return self.__data_tree["_id"]
-
-    @property
-    def dict(self):
-        return self.__data_tree
+        return self["_ts_meta"]["ros_time"]
 
     def __repr__(self):
         return str({k: type(self.dict[k]) for k in self.dict.keys()})
-
-    @property
-    def msgs(self):
-        if self.__msgs is None:
-            self.__msgs = self.to_ros_msg_dict()
-        return self.__msgs
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
