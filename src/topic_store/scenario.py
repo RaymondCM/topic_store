@@ -117,6 +117,9 @@ class ScenarioRunner:
 
         # Create subscriber tree for getting all the data
         self.subscriber_tree = SubscriberTree(self.scenario.data)
+        if self.stabilise_time:
+            self.log("Waiting for {}s before starting (stabilise_time)".format(self.stabilise_time))
+            rospy.sleep(self.stabilise_time)
 
         # Choose appropriate methods
         # Setting up the scenario runner this way means it's easily extendable by inheriting from Scenario runner

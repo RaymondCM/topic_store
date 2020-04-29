@@ -9,8 +9,8 @@
     <arg name="rosbridge_ip" default="$(optenv ROSBRIDGE_IP none)"/>
     <arg name="rosbridge_port" default="$(optenv ROSBRIDGE_PORT 9090)"/>
 
-    <!-- Autonomous data collection -->
-    <arg name="stabilise_time" default="0"/>
+    <!-- Time to wait for subs to be populated before starting -->
+    <arg name="stabilise_time" default="1"/>
 
     <!-- =========================================================================================================== -->
     <!-- ===============================================NODES======================================================= -->
