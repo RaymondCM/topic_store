@@ -151,8 +151,6 @@ class ScenarioRunner:
             self.service_server.publish_feedback(feedback)
             (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
 
-        # TODO: Is one action server per scenario runner the best way to do this?
-        #   it may be better to use goal_msg.runner_name to determine which runner should save
         action_lib_server_name = self.scenario.collection["action_server_name"]
         self.log("Starting '{}' actionlib server".format(action_lib_server_name))
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)

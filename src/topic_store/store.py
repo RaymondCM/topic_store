@@ -32,7 +32,7 @@ class AutoSubscriber:
 
 
 class AutoLogger:
-    """Automatically stores the data from a topic or YAML"""
+    """Automatically stores the data from a topic or python type in a container."""
     def __init__(self, data_to_store, callback=None):
         # Data to store is a ROS topic so store the topic result
         if isinstance(data_to_store, str) and data_to_store in dict(rospy.get_published_topics()).keys():
@@ -48,6 +48,14 @@ class AutoLogger:
 
 
 class SubscriberTree:
+    """Converts scenario files data field to a rich data hierarchy.
+
+    Examples:
+        >>> tree = SubscriberTree({"roslog": "/rosout", "rgb": "/camera/image_raw"})
+        >>> rospy.sleep(1)
+        >>> print(tree.get_message_tree())
+        >>> # Out: {'roslog': <class 'rosgraph_msgs.msg._Log.Log'>, 'rgb': <class 'sensor_msgs.msg._Image.Image'>, ...}
+    """
     def __init__(self, named_subscribers):
         self.tree = self.__build_tree(named_subscribers)
 
@@ -72,7 +80,6 @@ class SubscriberTree:
         msg_tree = {k: v.data if not isinstance(v, dict) else self.__get_msg_tree(v) for k, v in data_tree.items()}
         return msg_tree
 
-    # TODO: Parser should be a part of TopicStorage not TopicStore
     def get_message_tree(self):
         """TopicStore: Representation of the SubscriberTree topics snapshot"""
         return TopicStore(self.__get_msg_tree(data_tree=self.tree))

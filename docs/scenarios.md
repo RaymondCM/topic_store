@@ -50,7 +50,7 @@ storage:
 ## 3) Data
 
 The `"data"` field is a n level dictionary. The values of the keys in this dictionary will be stored 
-in the exported data. If the value is a string that starts with the character `/`, then the value will be populated with
+in the exported data. If the value is a string that is also currently a published topic, then the value will be populated with
 the respective ros topic information.
 In the example below the `"/clock"` topic information is stored in a `ros_clock_topic` container.
 

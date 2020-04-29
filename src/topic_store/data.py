@@ -221,7 +221,7 @@ class TopicStore:
     @property
     def msgs(self):
         if self.__msgs is None:
-            self.__msgs = self.to_ros_msg_dict()
+            self.__msgs = TopicStore.__dict_to_ros_msg_dict(self.dict)
         return self.__msgs
 
     # TopicStore()[item] returns python type
@@ -249,7 +249,7 @@ class TopicStore:
         return self["_ts_meta"]["ros_time"]
 
     def __repr__(self):
-        return str({k: type(self.dict[k]) for k in self.dict.keys()})
+        return str({k: type(self.msgs[k]) for k in self.msgs.keys()})
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
@@ -315,10 +315,6 @@ class TopicStore:
 
         return ros_msg_list
 
-    def to_ros_msg_dict(self):
-        # TODO: Cache these operations until self.__data_tree is updated
-        return TopicStore.__dict_to_ros_msg_dict(self.__data_tree)
-
     def to_ros_msg_list(self):
-        # TODO: Cache these operations until self.__data_tree is updated
+        # TODO: Cache this operation until self.__data_tree updated
         return list(TopicStore.__ros_msg_dict_to_list(self.msgs))
