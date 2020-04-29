@@ -13,8 +13,6 @@ import pathlib
 import rospy
 import actionlib
 
-from topic_store import MongoClient
-from topic_store.filesystem import TopicStorage
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
@@ -87,6 +85,20 @@ class ScenarioFileParser:
             except yaml.YAMLError as exc:
                 raise IOError(exc)
         return contents
+
+    def require_database(self):
+        if self.storage["method"] != "database":
+            raise ValueError("Scenario file is not configured for database connection as storage.method=={}".format(
+                self.storage["method"]
+            ))
+        return self
+
+    def require_filesystem(self):
+        if self.storage["method"] != "filesystem":
+            raise ValueError("Scenario file is not configured for filesystem storage as storage.method=={}".format(
+                self.storage["method"]
+            ))
+        return self
 
 
 class ScenarioRunner:
@@ -170,11 +182,13 @@ class ScenarioRunner:
             self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def init_save_database(self):
-        self.db_client = MongoClient(uri=self.scenario.storage["uri"], collection=self.scenario.context)
+        from topic_store.database import MongoStorage
+        self.db_client = MongoStorage(uri=self.scenario.storage["uri"], collection=self.scenario.context)
         self.log("Initialised saving to database {} @ '{}/{}'".format(self.scenario.storage["uri"],
                                                                       self.db_client.name, self.scenario.context))
 
     def init_save_filesystem(self):
+        from topic_store.filesystem import TopicStorage
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         save_location = self.scenario.storage["location"]
         if not save_location or save_location in ["default", "auto", "topic_store"]:

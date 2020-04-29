@@ -8,13 +8,13 @@ from __future__ import absolute_import, division, print_function
 import pickle
 import pathlib
 
-from topic_store.api import StorageApi
+from topic_store.api import Storage
 from topic_store.data import TopicStore
 
 __all__ = ["TopicStorage"]
 
 
-class TopicStorage(StorageApi):
+class TopicStorage(Storage):
     """Stores a history of TopicStore data trees for saving to the filesystem
 
     Args:
@@ -24,20 +24,18 @@ class TopicStorage(StorageApi):
     suffix = ".topic_store"
 
     def __init__(self, path):
-        if not isinstance(path, (pathlib.Path, str)) or not path:
-            raise ValueError("TopicStorage path arg must be either (str, pathlib.Path) not '{}'".format(type(path)))
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-            if not path.stem:
-                raise IOError("Please pass a path to a file not '{}'".format(path))
-        if path.exists() and path.suffix != TopicStorage.suffix:
-            raise IOError("File '{}' already exists".format(path))
-        path = path.with_suffix(TopicStorage.suffix)
-        if path.suffix != TopicStorage.suffix:
-            raise IOError("File '{}' is not a '{}' file".format(path, TopicStorage.suffix))
+        path = self.parse_path(path, require_suffix=self.suffix)
         self.path = path
 
-    def __write(self, topic_store):
+    @staticmethod
+    def load(path):
+        """Loads a Topic storage object from a .topic_store file"""
+        return TopicStorage(path)
+
+    def insert_one(self, topic_store):
+        if not isinstance(topic_store, TopicStore):
+            raise ValueError("TopicStorage only supports TopicStore types")
+        # Create if doesn't exist on the system
         if not self.path.exists():
             try:
                 self.path.parent.mkdir(parents=True)
@@ -46,11 +44,6 @@ class TopicStorage(StorageApi):
                     raise
         with self.path.open("ab" if self.path.exists() else "wb") as fh:
             pickle.dump(topic_store, fh, protocol=TopicStorage.PROTOCOL)
-
-    def insert_one(self, topic_store):
-        if not isinstance(topic_store, TopicStore):
-            raise ValueError("TopicStorage only supports TopicStore types")
-        self.__write(topic_store)
 
     def __iter__(self):
         if not self.path.exists():

@@ -7,31 +7,39 @@ from __future__ import absolute_import, division, print_function
 
 import pymongo
 
-from topic_store.api import StorageApi
+from topic_store.scenario import ScenarioFileParser
+from topic_store.api import Storage
 from topic_store.data import TopicStore, MongoDBReverseParser, MongoDBParser
 
-__all__ = ["MongoClient"]
+__all__ = ["MongoStorage"]
 
 
-class MongoClient(StorageApi):
+class MongoStorage(Storage):
     """Uses PyMongo and URI connection interface (https://docs.mongodb.com/manual/reference/connection-string/) to
         interface with a MongoDB server. Interface is the same as TopicStorage and pymongo utilities are wrapped in this
         class to ensure TopicStore objects are returned.
     """
-    def __init__(self, uri=None, collection="default", db_name="topic_store", host="localhost", port="65530"):
+    suffix = ".yaml"
+
+    def __init__(self, uri=None, collection="default"):
         if uri is None:
-            uri = "mongodb://{}:{}/".format(host, port)
-        self.client = pymongo.MongoClient(uri)
-        self.name = db_name
-        self._db = self.client[db_name]
-        self._collection_name = collection
+            uri = "mongodb://localhost:65530/"
+
         self.parser = MongoDBParser()  # Adds support for unicode to python str etc
         self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
+        self.name = "topic_store"
+        self._collection_name = collection
 
-    @property
-    def collection(self):
-        """Expose collection property so user has access to all PyMongo functionality"""
-        return self._db[self._collection_name]
+        self.client = pymongo.MongoClient(uri)
+        self._db = self.client[self.name]
+        self.collection = self._db[self._collection_name]
+
+    @staticmethod
+    def load(path):
+        """Loads connection information from a .yaml scenario file"""
+        path = MongoStorage.parse_path(path, require_suffix=MongoStorage.suffix)
+        scenario = ScenarioFileParser(path).require_database()
+        return MongoStorage(uri=scenario.storage["uri"], collection=scenario.context)
 
     def insert_one(self, topic_store):
         """Inserts a topic store object into the database

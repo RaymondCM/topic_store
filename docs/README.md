@@ -40,14 +40,12 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 
 ## Database data
 
-The below example shows how to load and use files stored in a database. You can see that the interface for working with 
-databases and the filesystem are the same. All stored documents in the database are easily de-serialised for use.
+The below example shows how to load and use files stored in a database. 
 
 ```python
-from topic_store import MongoClient
+from topic_store import load
 
-your_context = "your_collection"
-storage = MongoClient(collection=your_context)
+storage = load("/path/to/scenario/file/containing/db/connection/info.yaml")
 
 for item in storage:
     print("As Python Dict", item.dict)  # or item["key"]

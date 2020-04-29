@@ -200,9 +200,7 @@ class GenericPyROSMessage:
 
 
 class TopicStore:
-    """Storage container for message data .dict() returns python objects, .msgs() returns ROS messages
-    Useful for storing single documents in data bases (_id is prior generated)
-    """
+    """Storage container for message data .dict or [] returns python objects, .msgs or () returns ROS messages"""
 
     def __init__(self, data_tree):
         if not isinstance(data_tree, dict):
@@ -240,7 +238,7 @@ class TopicStore:
     def dict(self):
         return self.__data_tree
 
-    def __str__(self):
+    def __repr__(self):
         return str({k: type(self.dict[k]) for k in self.dict.keys()})
 
     @property

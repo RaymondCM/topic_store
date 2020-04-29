@@ -6,7 +6,7 @@
 import pathlib
 import rospy
 
-from topic_store import TopicStore
+from topic_store.data import TopicStore
 from topic_store.store import SubscriberTree
 from genpy import Message as ROSMessage
 

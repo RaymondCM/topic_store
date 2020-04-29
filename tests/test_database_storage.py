@@ -1,7 +1,7 @@
 import pytest
 
 from topic_store.data import TopicStore
-from topic_store.mongodb import MongoClient
+from topic_store.database import MongoStorage
 import rospy
 import ros_numpy
 import random
@@ -14,7 +14,7 @@ class TestDatabase:
         if not rospy.get_node_uri():
             rospy.init_node("topic_store_tests")
 
-        client = MongoClient(collection="python_tests")
+        client = MongoStorage(collection="python_tests")
 
         # Insert a test document
         insert_result = client.insert_one(TopicStore({"name": "test_name", "number": 1}))
@@ -50,7 +50,7 @@ class TestDatabase:
         if not rospy.get_node_uri():
             rospy.init_node("topic_store_tests")
 
-        client = MongoClient(collection="python_tests")
+        client = MongoStorage(collection="python_tests")
 
         # Test ROS_Message Serialisation with common Image Types
         numpy_types = {
