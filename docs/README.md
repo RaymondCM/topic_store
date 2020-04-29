@@ -47,13 +47,11 @@ databases and the filesystem are the same. All stored documents in the database 
 from topic_store import MongoClient
 
 your_context = "your_collection"
-client = MongoClient(collection=your_context)
+storage = MongoClient(collection=your_context)
 
-stored_topics = client.find()  # Return all the documents in this collection
-
-for item in stored_topics:
-    print("As ROS msg", item.msgs)
-    print("As python dict", item.dict)
+for item in storage:
+    print("As Python Dict", item.dict)  # or item["key"]
+    print("As ROS Msgs", item.msgs)  # or item("key")
 ```
 
 ## Filesystem data
@@ -64,11 +62,11 @@ The below example shows how to load and use `.topic_store` files, saved from whe
 ```python
 from topic_store import load
 
-stored_topics = load("/path/to/file.topic_store")
+storage = load("/path/to/file.topic_store")
 
-for item in stored_topics:
-    print("As Python Types", item.dict)
-    print("As ROS Msgs", item.msgs)
+for item in storage:
+    print("As Python Dict", item.dict)  # or item["key"]
+    print("As ROS Msgs", item.msgs)  # or item("key")
 ```
 
 ## Convert to ROS bags
