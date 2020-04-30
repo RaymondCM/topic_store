@@ -110,4 +110,5 @@ rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 - [x] Added convert to ROS bag from filesystem compatibility (via convert.py)
 - [x] Added convert to ROS bag from database compatibility (via convert.py)
 - [x] Added credentials to database connection method via URI
+- [ ] Support for GridFS or document splitting via list declaration in the scenario files.
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb
