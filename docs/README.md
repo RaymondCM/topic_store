@@ -24,9 +24,9 @@ collection:
   watch_topic: "/rosout"
 ```
 
-If ```storage.method``` is database ensure that your database is accessible at ```storage.uri```. 
-Only URI based connections are currently supported. To launch the default database 
-```roslaunch topic_store start_database.launch```, the default database creates/uses a Mongo 4.2 server instance in the 
+If ```storage.method``` is database ensure that your database is accessible at the host/port in ```storage.config```. 
+To launch the default database ```roslaunch topic_store start_database.launch```, the default database creates/uses 
+a Mongo 4.2 server instance in the 
 default ```$(find topic_store)/stored_topics/database``` folder exposed on ```localhost:65530```. Docker is used to bring up the server instance to avoid version 
 conflicts with system mongo.
 
@@ -109,6 +109,8 @@ rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 - [x] Added convert to filesystem from database compatibility (via convert.py)
 - [x] Added convert to ROS bag from filesystem compatibility (via convert.py)
 - [x] Added convert to ROS bag from database compatibility (via convert.py)
-- [x] Added credentials to database connection method via URI
+- [x] Added support for complex database creations via mongo configs
+- [x] Added URI inference from mongo configs to make API simpler
+- [ ] Added support for TLS/Auth in MongoClient and infer from mongo configs
 - [ ] Support for GridFS or document splitting via list declaration in the scenario files.
 - [ ] Integration of https://github.com/DreamingRaven/python-ezdb

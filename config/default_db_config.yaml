@@ -1,0 +1,13 @@
+# See https://docs.mongodb.com/manual/reference/configuration-options/ for more config options including TLS connection
+# By default, the docker container launched with a config will have access to $(find topic_store) files and subfolders
+# For access to other files such as auth certificates either place in this package or mount the volume in docker-compose.yaml
+storage:
+  #dbPath: /var/lib/mongodb #  Leave dbPath blank to store in the default topic_store/stored_topics/database directory
+  journal:
+    enabled: true
+
+net:
+  port: 65530 # The docker port will be mapped to the same port locally
+  bindIp: "0.0.0.0" # Bind the docker IP locally
+  compression:
+    compressors: "snappy,zstd,zlib"

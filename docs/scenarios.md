@@ -30,7 +30,7 @@ If `"filesystem"` is set, data will be stored in the location defined by the `st
 the default storage structure is documented [here](../stored_topics/readme.md). This mode is useful for offline use, 
 where a database isn't available. 
 
-A utility is provided in [migrate_data.py](../src/topic_store/migrate_data.py) to migrate the data to a database later on.
+A utility is provided in [convert.py](../scripts/convert.py) to migrate the data to a database later on.
 
 ```yaml
 storage: 
@@ -39,12 +39,13 @@ storage:
 ```
 
 If `"database"` is set, data will be stored in the database under a collection named context. 
-The database connection URI must be specified including the username and password.
+The database connection config must be specified so, a URI can be inferred from it the default is 
+[default_db_config.yaml](../config/default_db_config.yaml).
  
 ```yaml
 storage: 
     method: "database"
-    uri: "mongodb://localhost:27017" 
+    config: "default" 
 ```
 
 ## 3) Data
@@ -117,7 +118,9 @@ The below yaml file is a complete example which will capture camera and robot od
 ```yaml
 context: "documentation_example"
 
-storage: "filesystem"
+storage: 
+    method: "filesystem"
+    location: "default"
 
 data: {
     localisation: {

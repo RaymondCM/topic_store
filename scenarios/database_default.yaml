@@ -4,7 +4,7 @@ context: "default"                      # Context defines the data collection co
 
 storage:
   method: "database"                    # Where to store the data (database or filesystem)
-  uri: "mongodb://localhost:65530"      # If database specify the connection URI (including username and password)
+  config: "default"                     # If database specify the config file containing the IP and Port so URI can be inferred
 
 data: {
   topics: {

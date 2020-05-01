@@ -8,7 +8,7 @@ context: "default"                      # Context defines the data collection co
 storage:
   method: "filesystem"                  # Where to store the data (database or filesystem)
   location: "default"                   # If filesystem specify a storage location (default=$(find topic store)/filesystem/stored_topics/)
-  uri: "mongodb://localhost:65530"      # If database specify the connection URI (including username and password)
+  uri: "default"                        # If database specify the config file containing the IP and Port so URI can be inferred
 
 
 data: {                                 # Key, Value pairs of StorageFieldName: DesiredData

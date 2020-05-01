@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #  Raymond Kirk (Tunstill) Copyright (c) 2020
 #  Email: ray.tunstill@gmail.com
-
+#  Utility script provided to install docker on Ubuntu16.04/18.04
 cd "$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
 set -e
 

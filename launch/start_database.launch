@@ -1,8 +1,8 @@
 <launch>
-    <!-- If db_path is passed, override the MONGO_DB_PATH environment variable -->
-    <!-- If no db_path is passed override the MONGO_DB_PATH with the default db directory -->
-    <arg name="db_path" default="$(optenv MONGO_DB_PATH default)"/>
-    <env name="MONGO_DB_PATH" value="$(arg db_path)" if="$(eval arg('db_path')!='default')"/>
-    <env name="MONGO_DB_PATH" value="$(find topic_store)/stored_topics/database" if="$(eval arg('db_path')=='default')"/>
+    <!-- If db_config_path is passed, override the MONGO_DB_CONFIG_PATH environment variable -->
+    <!-- If no db_config_path is passed override the MONGO_DB_CONFIG_PATH with the default db directory -->
+    <arg name="db_config_path" default="$(optenv MONGO_DB_CONFIG_PATH default)"/>
+    <env name="MONGO_DB_CONFIG_PATH" value="$(arg db_config_path)" if="$(eval arg('db_config_path')!='default')"/>
+    <env name="MONGO_DB_CONFIG_PATH" value="$(find topic_store)/config/default_db_config.yaml" if="$(eval arg('db_config_path')=='default')"/>
     <node name="docker_db_launcher" pkg="topic_store" required="true" type="docker_compose_up_safe.sh" output="screen"/>
 </launch>
