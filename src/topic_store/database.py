@@ -27,11 +27,19 @@ class MongoStorage(Storage):
     """
     suffix = ".yaml"
 
-    def __init__(self, config=None, collection="default"):
-        if config in ["topic_store", "auto", "default"] or config is None:
-            config = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "config" / "default_db_config.yaml"
+    def __init__(self, config=None, collection="default", uri=None):
+        """
 
-        self.uri = self.uri_from_mongo_config(config)
+        Args:
+            config: Path to MongoDB config file that a URI can be inferred from
+            collection: The collection to manage
+            uri: URI overload, if passed will attempt to connect directly and config not used
+        """
+        self.uri = uri
+        if self.uri is None:
+            if config in ["topic_store", "auto", "default"] or config is None:
+                config = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "config" / "default_db_config.yaml"
+            self.uri = self.uri_from_mongo_config(config)
 
         self.parser = MongoDBParser()  # Adds support for unicode to python str etc
         self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
