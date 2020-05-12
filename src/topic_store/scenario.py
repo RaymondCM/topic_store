@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import datetime
+import os
 import rospkg
 import yaml
 from threading import Event
@@ -112,8 +113,11 @@ class ScenarioRunner:
         save_location = self.scenario.storage["location"]
         if not save_location or save_location in ["default", "auto", "topic_store"]:
             save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "stored_topics" / "filesystem"
+        elif save_location.startswith("pkg="):
+            package_name = save_location.split('=')[-1]
+            save_location = pathlib.Path(rospkg.RosPack().get_path(package_name)) / "stored_topics" / "filesystem"
         else:
-            save_location = pathlib.Path(save_location)
+            save_location = pathlib.Path(os.path.expanduser(save_location))
         save_folder = save_location / self.scenario.context
         self.log("Configured save_location as '{}'".format(save_folder))
         try:
