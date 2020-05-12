@@ -16,89 +16,7 @@ import actionlib
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
-
-
-class ScenarioFileParser:
-    __field_meta = {
-        "context": "",
-        "collection": {
-            "action_server": ["method", "action_server_name"],
-            "timer": ["method", "timer_delay"],
-            "event": ["method", "watch_topic"]
-        },
-        "storage": {
-            "database": ["method", "uri"],
-            "filesystem": ["method", "location"]
-        },
-        "data": {}
-    }
-
-    def __init__(self, scenario_file):
-        scenario = self._load_yaml_file(scenario_file)
-
-        # Perform file checks (ensure all four sections exist and are the right types)
-        for field in self.__field_meta:
-            if field not in scenario:
-                raise Exception("'{}' field missing from scenario file: {}".format(field, scenario_file))
-            if not isinstance(scenario[field], type(self.__field_meta[field])):
-                raise Exception("'{}' field should be type '{}' not '{}'".format(field, type(self.__field_meta[field]),
-                                                                                 type(scenario[field])))
-        # Parse context info
-        self.context = scenario["context"]
-
-        # Parse storage Info
-        self.storage = scenario["storage"]
-        if "method" not in self.storage:
-            raise Exception("storage.method must be either " + ', '.join(list(self.__field_meta["storage"].keys())))
-        for required_parameter in self.__field_meta["storage"][self.storage["method"]]:
-            if required_parameter not in self.storage:
-                raise Exception("Storage field in YAML file must have the parameter '{}' when method=='{}'".format(
-                    required_parameter, self.storage["method"]
-                ))
-        for parameter in self.storage.keys():  # Delete parameters that won't be used
-            if parameter not in self.__field_meta["storage"][self.storage["method"]]:
-                del self.storage[parameter]
-
-        # Data should just be a dict of key: data lookups
-        self.data = scenario["data"]
-
-        # Parse collection info
-        self.collection = scenario["collection"]
-        if "method" not in self.collection:
-            raise Exception("collection.method must be either " + ', '.join(self.__field_meta["collection"].keys()))
-        for required_parameter in self.__field_meta["collection"][self.collection["method"]]:
-            if required_parameter not in self.collection:
-                raise Exception("Collection field in YAML file must have the parameter '{}' when method=='{}'".format(
-                    required_parameter, self.collection["method"]
-                ))
-        for parameter in self.collection.keys():  # Delete parameters that won't be used
-            if parameter not in self.__field_meta["collection"][self.collection["method"]]:
-                del self.collection[parameter]
-
-    @staticmethod
-    def _load_yaml_file(file_path):
-        if isinstance(file_path, str):
-            file_path = pathlib.Path(file_path)
-        with file_path.open("r") as file_handle:
-            try:
-                contents = yaml.safe_load(file_handle)
-            except yaml.YAMLError as exc:
-                raise IOError(exc)
-        return contents
-
-    def require_database(self):
-        if self.storage["method"] != "database":
-            raise ValueError("Scenario file is not configured for database connection as storage.method=={}".format(
-                self.storage["method"]
-            ))
-        return self
-
-    def require_filesystem(self):
-        if self.storage["method"] != "filesystem":
-            raise ValueError("Scenario file is not configured for filesystem storage as storage.method=={}".format(
-                self.storage["method"]
-            ))
-        return self
+from topic_store.file_parsers import ScenarioFileParser
 
 
 class ScenarioRunner:
@@ -184,8 +102,8 @@ class ScenarioRunner:
 
     def init_save_database(self):
         from topic_store.database import MongoStorage
-        self.db_client = MongoStorage(uri=self.scenario.storage["uri"], collection=self.scenario.context)
-        self.log("Initialised saving to database {} @ '{}/{}'".format(self.scenario.storage["uri"],
+        self.db_client = MongoStorage(config=self.scenario.storage["config"], collection=self.scenario.context)
+        self.log("Initialised saving to database {} @ '{}/{}'".format(self.db_client.uri,
                                                                       self.db_client.name, self.scenario.context))
 
     def init_save_filesystem(self):

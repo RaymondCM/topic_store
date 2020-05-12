@@ -5,8 +5,12 @@
 
 from __future__ import absolute_import, division, print_function
 
+import rospkg
+
+import pathlib
 import pymongo
 
+from topic_store.file_parsers import load_yaml_file
 from topic_store.scenario import ScenarioFileParser
 from topic_store.api import Storage
 from topic_store.data import TopicStore, MongoDBReverseParser, MongoDBParser
@@ -15,20 +19,31 @@ __all__ = ["MongoStorage"]
 
 
 class MongoStorage(Storage):
-    """Uses PyMongo and URI connection interface (https://docs.mongodb.com/manual/reference/connection-string/) to
-        interface with a MongoDB server. Interface is the same as TopicStorage and pymongo utilities are wrapped in this
-        class to ensure TopicStore objects are returned.
+    """Uses PyMongo and YAML config connection interface see ($(find topic_store)/config/default_db_config.yaml)
+        Config options available at (https://docs.mongodb.com/manual/reference/configuration-options/). Will use the
+        net.bindIp and net.port parameters of net in config.yaml to interface with a MongoDB server. Interface is the
+        same as TopicStorage and pymongo utilities wrapped in this class to ensure TopicStore objects returned where
+        possible.
     """
     suffix = ".yaml"
 
-    def __init__(self, uri=None, collection="default"):
-        if uri is None:
-            uri = "mongodb://localhost:65530/"
+    def __init__(self, config=None, collection="default", uri=None):
+        """
+
+        Args:
+            config: Path to MongoDB config file that a URI can be inferred from
+            collection: The collection to manage
+            uri: URI overload, if passed will attempt to connect directly and config not used
+        """
+        self.uri = uri
+        if self.uri is None:
+            if config in ["topic_store", "auto", "default"] or config is None:
+                config = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "config" / "default_db_config.yaml"
+            self.uri = self.uri_from_mongo_config(config)
 
         self.parser = MongoDBParser()  # Adds support for unicode to python str etc
         self.reverse_parser = MongoDBReverseParser()  # Adds support for unicode to python str etc
         self.name = "topic_store"
-        self.uri = uri
         self.collection_name = collection
 
         self.client = pymongo.MongoClient(self.uri)
@@ -36,11 +51,22 @@ class MongoStorage(Storage):
         self.collection = self._db[self.collection_name]
 
     @staticmethod
+    def uri_from_mongo_config(mongo_config_path):
+        # TODO: Add support for user/password in the config file and TLS/Auth options to MongoClient
+        if isinstance(mongo_config_path, str):
+            mongo_config_path = pathlib.Path(mongo_config_path)
+        if not mongo_config_path.is_file() or mongo_config_path.suffix != ".yaml":
+            raise IOError("'{}' is not a valid MongoDB configuration file".format(mongo_config_path))
+        mongo_config = load_yaml_file(mongo_config_path)
+        uri = "mongodb://{}:{}".format(mongo_config["net"]["bindIp"], mongo_config["net"]["port"])
+        return uri
+
+    @staticmethod
     def load(path):
         """Loads connection information from a .yaml scenario file"""
         path = MongoStorage.parse_path(path, require_suffix=MongoStorage.suffix)
         scenario = ScenarioFileParser(path).require_database()
-        return MongoStorage(uri=scenario.storage["uri"], collection=scenario.context)
+        return MongoStorage(config=scenario.storage["config"], collection=scenario.context)
 
     def insert_one(self, topic_store):
         """Inserts a topic store object into the database
