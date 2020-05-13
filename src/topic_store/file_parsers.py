@@ -100,18 +100,15 @@ class ScenarioFileParser:
         file_path = pathlib.Path(str(file_path))
         if not file_path.is_file():
             raise IOError("'{}' is not a valid file".format(file_path))
-        # These characters need to be escaped in when these vars evaluated (`~!#$&)
-        _invalid = ["$", "\\", "`", "!", "(", ")", "#", "&", "*", "&", "\\t", "[", "]", "{", "}", "|", ";", "'", '"',
-                    "\\n", "<", ">", "?"]
+        # These characters need to be escaped in when these vars evaluated
+        _remove_symbols = list('$\\`!()#*&\t[]{}|;\'"\n<>?')
 
         def rec_print_dict(d, previous_key_str=""):
             for yaml_key, yaml_value in d.items():
                 if isinstance(yaml_value, dict):
                     rec_print_dict(yaml_value, previous_key_str + yaml_key + sep)
                 else:
-                    yaml_value = str(yaml_value)
-                    for i in _invalid:
-                        yaml_value = yaml_value.replace(i, "\\" + i)
+                    yaml_value = ''.join([c for c in str(yaml_value) if c not in _remove_symbols])
                     print('{}="{}"'.format(prefix + sep + previous_key_str + yaml_key, yaml_value))
 
         doc = load_yaml_file(file_path)
