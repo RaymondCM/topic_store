@@ -26,7 +26,7 @@ fi
 
 # Load mongo config path from the scenario file
 source parse_yaml.sh # TODO: Using eval can lead to weird results/evaluations if $ or \ symbols used in the YAML values, fix this
-eval "$(parse_yaml "${scenario_file}" "TS_SCENARIO" "_")"
+eval "$(parse_yaml "${scenario_file}" "TS_SCENARIO" "_" "1")"
 
 # If config is any of the magic strings replace with default config file similar to how MongoClient will
 if [[ "default topic_store auto" =~ (^|[[:space:]])"$TS_SCENARIO_storage_config"($|[[:space:]]) ]] ; then
@@ -52,7 +52,7 @@ fi
 MONGO_storage_dbPath=$(join_path "$pkg_root" "/stored_topics/database")
 
 # Load environment variables from ${TS_SCENARIO_storage_config}
-eval "$(parse_yaml "${TS_SCENARIO_storage_config}" "MONGO")"
+eval "$(parse_yaml "${TS_SCENARIO_storage_config}" "MONGO" "_")"
 
 # Ensure no leading comments/spaces from parser
 MONGO_storage_dbPath=$(echo "${MONGO_storage_dbPath}"  | cut -f1 -d"#")
@@ -70,6 +70,13 @@ echo -e "Starting \e[93mMongoDB Server\e[0m:\n"\
         "\t- Using config from scenario '\e[96m${TS_SCENARIO_storage_config}\e[0m'.\n"\
         "\t- Docker port '\e[96m${MONGO_net_port}\e[0m' bound to local '\e[96m${MONGO_net_port}\e[0m'.\n"\
         "\t- At '\e[96m${MONGO_storage_dbPath}\e[0m' local mount point.\e[0m\n"
+
+# Check exports are set and correct
+if [[ -z "$TOPIC_STORE_ROOT" || -z "$TS_SCENARIO_storage_config" || -z "$MONGO_storage_dbPath" || -z "$MONGO_net_port" ]]; then
+    echo -e "\n$error_str The above parameters are invalid"
+    echo -e "\n\e[1m\e[41m\e[97mScript Usage:\e[0m '$script_usage' where the storage.method==database\n"
+    exit 1
+fi
 
 # Function to stop the database on exit sig_(exit int term)
 function cleanup {
