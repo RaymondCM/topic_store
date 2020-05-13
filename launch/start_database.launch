@@ -1,8 +1,6 @@
 <launch>
-    <!-- If db_config_path is passed, override the MONGO_DB_CONFIG_PATH environment variable -->
-    <!-- If no db_config_path is passed override the MONGO_DB_CONFIG_PATH with the default db directory -->
-    <arg name="db_config_path" default="$(optenv MONGO_DB_CONFIG_PATH default)"/>
-    <env name="MONGO_DB_CONFIG_PATH" value="$(arg db_config_path)" if="$(eval arg('db_config_path')!='default')"/>
-    <env name="MONGO_DB_CONFIG_PATH" value="$(find topic_store)/config/default_db_config.yaml" if="$(eval arg('db_config_path')=='default')"/>
-    <node name="docker_db_launcher" pkg="topic_store" required="true" type="docker_compose_up_safe.sh" output="screen"/>
+    <!-- The database launch script will use the config at scenario_file.storage.config -->
+    <arg name="scenario_file" default="$(find topic_store)/scenarios/database_default.yaml"/>
+    <node name="docker_db_launcher" pkg="topic_store" required="true" type="docker_compose_up_safe.sh" output="screen"
+        args="$(arg scenario_file)"/>
 </launch>

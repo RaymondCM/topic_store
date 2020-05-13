@@ -24,11 +24,11 @@ collection:
   watch_topic: "/rosout"
 ```
 
-If ```storage.method``` is database ensure that your database is accessible at the host/port in ```storage.config```. 
-To launch the default database ```roslaunch topic_store start_database.launch```, the default database creates/uses 
-a Mongo 4.2 server instance in the 
-default ```$(find topic_store)/stored_topics/database``` folder exposed on ```localhost:65530```. Docker is used to bring up the server instance to avoid version 
-conflicts with system mongo.
+If ```storage.method``` is database ensure that your database is accessible at the host/port in the config file found at
+ ```storage.config```. To launch the default database ```roslaunch topic_store start_database.launch```, the default 
+database creates/uses a Mongo 4.2 server instance in the default ```$(find topic_store)/stored_topics/database``` 
+folder exposed on ```localhost:65530``` (defined in  ```storage.config``` of the scenario file). 
+Docker is used to bring up the server instance to avoid version conflicts with system mongo.
 
 Launch your data collection scenario! 
 
@@ -67,6 +67,17 @@ for item in storage:
     print("As ROS Msgs", item.msgs)  # or item("key")
 ```
 
+## Launch a database
+
+When launching a data collection scenario where ```storage.method==database``` you must also launch the database or 
+ensure it's already running at the uri defined in the host/port parameters of the config file located at ```storage.config```.
+
+To launch a database prior to running a data collection scenario.
+
+```bash
+roslaunch topic_store start_database.launch scenario_file:="/path/to/your/scenario/file.yaml"
+```
+ 
 ## Convert to ROS bags
 
 Filesystem `.topic_store` files and database collections can be converted to ROS bags.

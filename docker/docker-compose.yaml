@@ -15,6 +15,6 @@ services:
       - ${MONGO_net_port}:${MONGO_net_port} # Bind the docker IP to the same local IP
     volumes:
       - ${TOPIC_STORE_ROOT}:${TOPIC_STORE_ROOT} # All files in the topic_store package available in the docker
-      - ${MONGO_DB_CONFIG_PATH}:${MONGO_DB_CONFIG_PATH} # Config available in the docker
+      - ${TS_SCENARIO_storage_config}:${TS_SCENARIO_storage_config} # Config available in the docker
       - ${MONGO_storage_dbPath}:${MONGO_storage_dbPath} # Database folder mounted in the docker
-    command: --config "${MONGO_DB_CONFIG_PATH}"
+    command: --config "${TS_SCENARIO_storage_config}"
