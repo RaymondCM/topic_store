@@ -54,10 +54,6 @@ MONGO_storage_dbPath=$(join_path "$pkg_root" "/stored_topics/database")
 # Load environment variables from ${TS_SCENARIO_storage_config}
 eval "$(parse_yaml "${TS_SCENARIO_storage_config}" "MONGO" "_")"
 
-# Ensure no leading comments/spaces from parser
-MONGO_storage_dbPath=$(echo "${MONGO_storage_dbPath}"  | cut -f1 -d"#")
-MONGO_net_port=$(echo "${MONGO_net_port}" | cut -f1 -d" ")
-
 # Export variables needed by docker-compose and ensure no leading comments
 export TOPIC_STORE_ROOT=${pkg_root}
 export TS_SCENARIO_storage_config=$TS_SCENARIO_storage_config
