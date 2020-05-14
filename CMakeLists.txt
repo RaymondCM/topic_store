@@ -48,7 +48,7 @@ catkin_python_setup()
 # ==============================================
 # add_service_files( FILES )
 
-add_message_files( FILES )
+# add_message_files( FILES )
 
 add_action_files(DIRECTORY action FILES CollectData.action)
 
