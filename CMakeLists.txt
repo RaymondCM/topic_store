@@ -18,6 +18,29 @@ find_package(catkin REQUIRED COMPONENTS
 # ==============================================
 # Python scripts setup
 # ==============================================
+if(DEFINED ENV{INSTALL_TOPIC_STORE_PYTHON_FROM_PIP})
+    # Install python dependancies (first try to install locally, then to user site_packages)
+    find_package(PythonInterp REQUIRED)
+    set(return_status "1")
+    set(failed_commands "")
+    foreach(flag "" "--user")
+        set(command "pip install -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt ${flag}")
+        execute_process (COMMAND bash -c "${command}" OUTPUT_VARIABLE output_var ERROR_VARIABLE error_var
+                         RESULT_VARIABLE return_status)
+        message(WARNING "${command}Not a warning just output of pip install dependancies:\n${output_var}")
+
+        if(return_status EQUAL "0")
+            break()
+        endif()
+        list(APPEND failed_commands "\n\t- '${command}'")
+    endforeach()
+    if(NOT return_status EQUAL "0")
+        message(SEND_ERROR "${output_var}")
+        message(SEND_ERROR "${error_var}")
+        message(FATAL_ERROR "Failed to install python requirements with:${failed_commands}")
+    endif()
+endif()
+
 catkin_python_setup()
 
 # ==============================================

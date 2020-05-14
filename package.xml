@@ -12,20 +12,21 @@
     Used for serialising common ROS topic messages to a database or filesystem.
   </description>
 
-  <maintainer email="rkirk@lincoln.ac.uk">RaymondKirk</maintainer>
-  <maintainer email="ray.tunstill@gmail.com">RaymondTunstill</maintainer>
+  <maintainer email="rkirk@lincoln.ac.uk">Raymond Kirk</maintainer>
+  <maintainer email="ray.tunstill@gmail.com">Raymond Tunstill</maintainer>
 
-  <license>TODO</license>
+  <url type="repository">https://github.com/RaymondKirk/topic_store</url>
+  <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>ros_numpy</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>actionlib_msgs</build_depend>
 
+  <!-- Core dependencies -->
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
@@ -33,4 +34,14 @@
   <exec_depend>message_runtime</exec_depend>
   <exec_depend>actionlib</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>
+
+  <!-- Python dependencies  -->
+  <exec_depend version_gte="1.0.1">python-pathlib</exec_depend>
+  <exec_depend version_gte="3.6.1">python-pymongo</exec_depend>
+  <exec_depend version_gte="1.2.6">python-rospkg</exec_depend>
+  <exec_depend version_gte="4.43.0">python-tqdm</exec_depend>
+  <exec_depend version_gte="3.12">python-yaml</exec_depend>
+  <exec_depend version_gte="1.13.3">python-numpy</exec_depend>
+
+  <test_depend version_gte="3.3.2">python-pytest</test_depend>
 </package>

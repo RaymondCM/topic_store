@@ -1,0 +1,5 @@
+pathlib>=1.0.1
+pyyaml>=3.12
+pymongo>=3.6.1
+rospkg>=1.2.6
+tqdm>=4.43.0

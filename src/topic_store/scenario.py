@@ -8,7 +8,6 @@ from __future__ import absolute_import, division, print_function
 import datetime
 import os
 import rospkg
-import yaml
 from threading import Event
 import pathlib
 import rospy

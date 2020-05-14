@@ -100,7 +100,7 @@ class ScenarioFileParser:
         file_path = pathlib.Path(str(file_path))
         if not file_path.is_file():
             raise IOError("'{}' is not a valid file".format(file_path))
-        # These characters need to be escaped in when these vars evaluated
+        # These characters need to be removed (or escaped) in when these vars evaluated
         _remove_symbols = list('$\\`!()#*&\t[]{}|;\'"\n<>?')
 
         def rec_print_dict(d, previous_key_str=""):
