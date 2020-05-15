@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.2 (2020-05-15)
+------------------
 * Added package is install CMake args
 * Fix type coercion tests so keys must be strings
 * Fixed support for convert and ensure all document keys are strings
