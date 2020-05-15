@@ -43,7 +43,7 @@ class TestDatabase:
             print("Doc:\n\t-As Structure: {}\n\t-As Dict: {}\n\t-As ROS Msgs: {}".format(str(x), x.dict, x.msgs))
 
         # Cleanup test by deleting document
-        # delete_result = client.delete_by_id(insert_result.inserted_id)
+        delete_result = client.delete_by_id(insert_result.inserted_id)
 
     @pytest.mark.filterwarnings('ignore::DeprecationWarning')  # ros_numpy using deprecated methods
     def test_image_encoding(self):
@@ -86,7 +86,7 @@ class TestDatabase:
             np.testing.assert_equal(typed_array, retrieved_array)
 
             # Delete image message
-            # client.delete_by_id(im_result.inserted_id)
+            client.delete_by_id(im_result.inserted_id)
 
 
 if __name__ == '__main__':

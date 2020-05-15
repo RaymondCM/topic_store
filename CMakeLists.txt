@@ -62,7 +62,10 @@ catkin_package(CATKIN_DEPENDS std_msgs message_runtime)
 # ==============================================
 # Install
 # ==============================================
-install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY "launch" DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY "scenarios" DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY "config" DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY "action" DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 file(GLOB python_scripts_DIR "scripts/*.py")
 file(GLOB python_src_DIR "src/**/*.py")

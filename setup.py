@@ -17,7 +17,8 @@ def parse_package_requirements():
 setup_args = generate_distutils_setup(
     packages=['topic_store'],
     package_dir={'': 'src'},
-    install_requires=parse_package_requirements()
+    install_requires=parse_package_requirements(),
+    test_requires=["pytest"],
 )
 
 setup(**setup_args)
