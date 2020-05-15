@@ -3,7 +3,7 @@
 #  Email: ray.tunstill@gmail.com
 
 # File to safely bring up a mongod instance inside a docker container and load environment variables from YAML config
-# Not for direct use, instead use roslaunch topic_store start_database.launch or topic_store.MongoClient()
+# Not for direct use, instead use roslaunch topic_store start_database.launch
 cd "$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
 set -e
 

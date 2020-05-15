@@ -32,12 +32,13 @@ If ```storage.method``` is database ensure that your database is accessible at t
  ```storage.config```. To launch the default database ```roslaunch topic_store start_database.launch```, the default 
 database creates/uses a Mongo 4.2 server instance in the default ```${HOME}/.ros/topic_store/database``` 
 folder exposed on ```localhost:65530``` (defined in  ```storage.config``` of the scenario file). 
-Docker is used to bring up the server instance to avoid version conflicts with system mongo.
+Docker is a requirement to use a database backend to avoid conflicts with system mongo. A utility script is provided in 
+`scripts/install_docker.sh` if you do not have it installed.
 
 Launch your data collection scenario! 
 
 ```
-roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"
+roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"RaymondKirk/topic_store-release
 ```
 
 # Examples
