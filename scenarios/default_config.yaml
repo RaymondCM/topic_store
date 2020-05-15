@@ -7,8 +7,8 @@ context: "default"                      # Context defines the data collection co
 
 storage:
   method: "filesystem"                  # Where to store the data (database or filesystem)
-  location: "default"                   # If filesystem specify a storage location (default=$(find topic store)/filesystem/stored_topics/)
-  config: "default"                        # If database specify the config file containing the IP and Port so URI can be inferred
+  location: "default"                   # If filesystem specify a storage location (default="${HOME}/.ros/topic_store/filesystem")
+  config: "default"                     # If database specify the config file containing the IP and Port so URI can be inferred (default_db_path="${HOME}/.ros/topic_store/database")
 
 
 data: {                                 # Key, Value pairs of StorageFieldName: DesiredData

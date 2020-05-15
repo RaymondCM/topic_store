@@ -66,3 +66,11 @@ install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 file(GLOB python_scripts_DIR "scripts/*.py")
 catkin_install_python(PROGRAMS ${python_scripts_DIR} DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+# ==============================================
+# Tests
+# ==============================================
+if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
+  add_rostest(tests/topic_store.test)
+endif()

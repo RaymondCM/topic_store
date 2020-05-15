@@ -48,16 +48,31 @@ if ! [ -f "${TS_SCENARIO_storage_config}" ]; then
     exit 1
 fi
 
-# Default storage path in in the current sourced package
-MONGO_storage_dbPath=$(join_path "$pkg_root" "/stored_topics/database")
+
 
 # Load environment variables from ${TS_SCENARIO_storage_config}
 eval "$(parse_yaml "${TS_SCENARIO_storage_config}" "MONGO" "_")"
+
+# If dbPath not set in config use defaults
+if [ -z $MONGO_storage_dbPath ]; then
+    # Default storage path home directory and default docker mount if not set
+    MONGO_local_storage_dbPath="${HOME}/.ros/topic_store/database"
+else
+    # Else mount the docker and local mount in the same place
+    MONGO_local_storage_dbPath=$MONGO_storage_dbPath
+fi
+
+# Mongo DB path in docker should always be in /data/db since it's setup in the default image
+MONGO_storage_dbPath="/data/db"
+
+# Ensure folder exists
+mkdir -p "${MONGO_local_storage_dbPath}"
 
 # Export variables needed by docker-compose and ensure no leading comments
 export TOPIC_STORE_ROOT=${pkg_root}
 export TS_SCENARIO_storage_config=$TS_SCENARIO_storage_config
 export MONGO_storage_dbPath=$MONGO_storage_dbPath
+export MONGO_local_storage_dbPath=$MONGO_local_storage_dbPath
 export MONGO_net_port=$MONGO_net_port
 
 # Log to console
@@ -65,10 +80,10 @@ echo -e "Starting \e[93mMongoDB Server\e[0m:\n"\
         "\t- Using scenario '\e[96m${scenario_file}\e[0m'.\n"\
         "\t- Using config from scenario '\e[96m${TS_SCENARIO_storage_config}\e[0m'.\n"\
         "\t- Docker port '\e[96m${MONGO_net_port}\e[0m' bound to local '\e[96m${MONGO_net_port}\e[0m'.\n"\
-        "\t- At '\e[96m${MONGO_storage_dbPath}\e[0m' local mount point.\e[0m\n"
+        "\t- At '\e[96m${MONGO_local_storage_dbPath}\e[0m' local mount point from docker mount '\e[96m${MONGO_storage_dbPath}\e[0m'.\e[0m\n"
 
 # Check exports are set and correct
-if [[ -z "$TOPIC_STORE_ROOT" || -z "$TS_SCENARIO_storage_config" || -z "$MONGO_storage_dbPath" || -z "$MONGO_net_port" ]]; then
+if [[ -z "$TOPIC_STORE_ROOT" || -z "$TS_SCENARIO_storage_config" || -z "$MONGO_local_storage_dbPath" || -z "$MONGO_storage_dbPath" || -z "$MONGO_net_port" ]]; then
     echo -e "\n$error_str The above parameters are invalid"
     echo -e "\n\e[1m\e[41m\e[97mScript Usage:\e[0m '$script_usage' where the storage.method==database\n"
     exit 1

@@ -10,6 +10,7 @@ import pathlib
 import rospy
 import rospkg
 
+from topic_store import get_package_root
 from topic_store.scenario import ScenarioRunner
 
 
@@ -17,7 +18,7 @@ def run_scenario():
     rospy.init_node("scenario_runner_node", anonymous=True)
 
     # Get the package path
-    pkg_root = rospkg.RosPack().get_path("topic_store")
+    pkg_root = get_package_root()
 
     # Get parameters
     stabilise_time = rospy.get_param('~stabilise_time', 0)

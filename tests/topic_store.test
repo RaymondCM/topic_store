@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find topic_store)/launch/start_database.launch"/>
+
+  <param name="test_module" value="topic_store"/>
+  <test test-name="test_topic_store" pkg="topic_store" type="pytest_runner.py"/>
+</launch>

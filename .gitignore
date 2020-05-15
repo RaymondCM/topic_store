@@ -1,8 +1,4 @@
 ## Project folders
-# Output dirs
-stored_topics/filesystem
-stored_topics/database
-
 # Storage files
 **/*.topic_store
 

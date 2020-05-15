@@ -13,6 +13,7 @@ import pathlib
 import rospy
 import actionlib
 
+from topic_store import get_package_root
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
@@ -111,10 +112,10 @@ class ScenarioRunner:
         formatted_datetime = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         save_location = self.scenario.storage["location"]
         if not save_location or save_location in ["default", "auto", "topic_store"]:
-            save_location = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "stored_topics" / "filesystem"
+            save_location = pathlib.Path(os.path.expanduser("~/.ros/topic_store/filesystem"))
         elif save_location.startswith("pkg="):
             package_name = save_location.split('=')[-1]
-            save_location = pathlib.Path(rospkg.RosPack().get_path(package_name)) / "stored_topics" / "filesystem"
+            save_location = pathlib.Path(os.path.expanduser("~/.ros/topic_store/filesystem/{}/".format(package_name)))
         else:
             save_location = pathlib.Path(os.path.expanduser(save_location))
         save_folder = save_location / self.scenario.context

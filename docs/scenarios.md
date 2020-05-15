@@ -26,11 +26,10 @@ When storage method is database the data is stored in a collection of name conte
 The `storage.method` field can be one of two possible strings `"database"` or `"filesystem"`.
 This parameter tells the data logger where to store the data. 
 
-If `"filesystem"` is set, data will be stored in the location defined by the `storage.location` parameter, 
-the default storage structure is documented [here](../stored_topics/readme.md). This mode is useful for offline use, 
-where a database isn't available. 
+If `"filesystem"` is set, data will be stored in the location defined by the `storage.location` parameter.
+This mode is useful for offline use, where a database isn't available. 
 
-A utility is provided in [convert.py](../scripts/convert.py) to migrate the data to a database later on.
+A utility provided in [convert.py](../scripts/convert.py) to migrate the data to a database later on.
 
 ```yaml
 storage: 

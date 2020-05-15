@@ -10,6 +10,7 @@ import rospkg
 import pathlib
 import pymongo
 
+from topic_store import get_package_root
 from topic_store.file_parsers import load_yaml_file
 from topic_store.scenario import ScenarioFileParser
 from topic_store.api import Storage
@@ -38,7 +39,7 @@ class MongoStorage(Storage):
         self.uri = uri
         if self.uri is None:
             if config in ["topic_store", "auto", "default"] or config is None:
-                config = pathlib.Path(rospkg.RosPack().get_path("topic_store")) / "config" / "default_db_config.yaml"
+                config = get_package_root() / "config" / "default_db_config.yaml"
             self.uri = self.uri_from_mongo_config(config)
 
         self.parser = MongoDBParser()  # Adds support for unicode to python str etc
@@ -153,9 +154,10 @@ class MongoServer:
         import rospkg
         import pathlib
         import rospy
-        pkg_root = pathlib.Path(rospkg.RosPack().get_path("topic_store"))
+        import os
+        pkg_root = get_package_root()
         script_path = pkg_root / "docker/docker_compose_up_safe.sh"
-        db_default = pkg_root / "stored_topics/database"
+        db_default = pathlib.Path(os.path.expanduser("~/.ros/topic_store/database"))
         rospy.on_shutdown(self._on_shutdown)
         self.process = subprocess.Popen(['bash', script_path], env={"MONGO_DB_PATH": db_default})
 

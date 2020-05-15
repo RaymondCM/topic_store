@@ -30,7 +30,7 @@ collection:
 
 If ```storage.method``` is database ensure that your database is accessible at the host/port in the config file found at
  ```storage.config```. To launch the default database ```roslaunch topic_store start_database.launch```, the default 
-database creates/uses a Mongo 4.2 server instance in the default ```$(find topic_store)/stored_topics/database``` 
+database creates/uses a Mongo 4.2 server instance in the default ```${HOME}/.ros/topic_store/database``` 
 folder exposed on ```localhost:65530``` (defined in  ```storage.config``` of the scenario file). 
 Docker is used to bring up the server instance to avoid version conflicts with system mongo.
 
