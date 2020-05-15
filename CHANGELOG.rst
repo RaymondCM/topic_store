@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.3 (2020-05-15)
+------------------
 * Added docker instructions and install script
 * Contributors: RaymondKirk
 
