@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.4 (2020-05-15)
+------------------
 * Enable start_database.launch to use system mongo for CI and tests
 * Contributors: RaymondKirk
 
