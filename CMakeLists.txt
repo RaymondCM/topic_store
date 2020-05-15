@@ -65,7 +65,11 @@ catkin_package(CATKIN_DEPENDS std_msgs message_runtime)
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 file(GLOB python_scripts_DIR "scripts/*.py")
-catkin_install_python(PROGRAMS ${python_scripts_DIR} DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+file(GLOB python_src_DIR "src/**/*.py")
+catkin_install_python(
+    PROGRAMS ${python_src_DIR} ${python_scripts_DIR}
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # ==============================================
 # Tests

@@ -96,7 +96,7 @@ class DefaultTypeParser:
         return data
 
     def __parse_dict(self, data):
-        return {k: self.parse_type(v) for k, v in data.items()}
+        return {str(k): self.parse_type(v) for k, v in data.items()}
 
     def __parse_list(self, data):
         return [self.parse_type(i) for i in data]
