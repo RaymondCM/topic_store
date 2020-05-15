@@ -2,6 +2,11 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Added docker instructions and install script
+* Contributors: RaymondKirk
+
 0.0.2 (2020-05-15)
 ------------------
 * Added package is install CMake args
