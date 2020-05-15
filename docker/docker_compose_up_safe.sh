@@ -62,6 +62,9 @@ else
     MONGO_local_storage_dbPath=$MONGO_storage_dbPath
 fi
 
+# Expand tilde
+MONGO_local_storage_dbPath="${MONGO_local_storage_dbPath/#\~/$HOME}"
+
 # Mongo DB path in docker should always be in /data/db since it's setup in the default image
 MONGO_storage_dbPath="/data/db"
 
@@ -87,6 +90,13 @@ if [[ -z "$TOPIC_STORE_ROOT" || -z "$TS_SCENARIO_storage_config" || -z "$MONGO_l
     echo -e "\n$error_str The above parameters are invalid"
     echo -e "\n\e[1m\e[41m\e[97mScript Usage:\e[0m '$script_usage' where the storage.method==database\n"
     exit 1
+fi
+
+# For tests use local mongodb
+if [[ -n "$TOPIC_STORE_LOCAL_DB" && "$TOPIC_STORE_LOCAL_DB" = "YES" ]]; then
+    echo -e "Using \e[93mSystem MongoD\e[0m"
+    mongod --config "${TS_SCENARIO_storage_config}" --dbpath "${MONGO_local_storage_dbPath}"
+    exit 0
 fi
 
 # Function to stop the database on exit sig_(exit int term)

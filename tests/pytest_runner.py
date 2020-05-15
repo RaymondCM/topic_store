@@ -20,22 +20,7 @@ if __name__ == '__main__':
     test_module = rospy.get_param('test_module')
     runner_path = os.path.dirname(os.path.realpath(__file__))
     module_path = os.path.join(runner_path, test_module)
-    import warnings
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
-    warnings.warn(output_file)
+
     sys.exit(
         pytest.main([module_path, '-v', '--junitxml={}'.format(output_file)])
     )

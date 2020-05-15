@@ -47,5 +47,6 @@
   <exec_depend version_gte="3.12">python-yaml</exec_depend>
   <exec_depend version_gte="1.13.3">python-numpy</exec_depend>
 
+  <test_depend>mongodb</test_depend> <!-- Test uses system docker so CI works -->
   <test_depend version_gte="3.3.2">python-pytest</test_depend>
 </package>
