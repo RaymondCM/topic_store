@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.5 (2020-05-16)
+------------------
 * Reduced required TQDM version
 * Contributors: RaymondKirk
 

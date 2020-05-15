@@ -6,7 +6,7 @@
 
 <package format="2">
   <name>topic_store</name>
-  <version>0.0.4</version>
+  <version>0.0.5</version>
   <description>
     The topic_store package.
     Used for serialising common ROS topic messages to a database or filesystem.
