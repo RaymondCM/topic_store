@@ -38,7 +38,7 @@ Docker is a requirement to use a database backend to avoid conflicts with system
 Launch your data collection scenario! 
 
 ```
-roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"RaymondKirk/topic_store-release
+roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario/file.yaml"
 ```
 
 # Examples
