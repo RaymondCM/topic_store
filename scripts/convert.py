@@ -128,6 +128,7 @@ def __convert():
     parser.add_argument("-o", "--output", help="Output File", type=str, required=True)
     args = parser.parse_args()
 
+    rospy.init_node("topic_store_convert", anonymous=True)
     input_file = pathlib.Path(args.input)
     output_file = pathlib.Path(args.output)
 
