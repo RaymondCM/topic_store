@@ -2,6 +2,13 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated requirements.txt
+* Remove README.md typo
+* Ensure rospy is initialised in convert.py script
+* Contributors: RaymondKirk
+
 0.0.5 (2020-05-16)
 ------------------
 * Reduced required TQDM version
