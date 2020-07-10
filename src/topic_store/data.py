@@ -296,7 +296,7 @@ class TopicStore:
         for k, v in d.items():
             s += "{}{}{}{}: ".format(sep, "\t" * depth, k, ("(" + self.__get_size(v) + ")") if print_size else "")
             if isinstance(v, dict):
-                s += "{" + self.__recurse_types(v, depth + tabs) + sep + "\t" * depth + "}"
+                s += "{" + self.__recurse_types(v, depth + tabs, tabs, sep, print_size) + sep + "\t" * depth + "}"
             else:
                 s += "{}".format(type(v))
 
@@ -304,8 +304,8 @@ class TopicStore:
             s += sep + "}"
         return s
 
-    def __repr__(self):
-        return self.__recurse_types(self.msgs)
+    def __repr__(self, print_size=False):
+        return self.__recurse_types(self.msgs, print_size=print_size)
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
