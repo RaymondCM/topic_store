@@ -32,8 +32,9 @@ class AutoSubscriber:
 class AutoLogger:
     """Automatically stores the data from a topic or python type in a container."""
     def __init__(self, data_to_store, callback=None):
-        # Data to store is a ROS topic so store the topic result
-        if isinstance(data_to_store, str) and data_to_store in dict(rospy.get_published_topics()).keys():
+        # Data to store is a ROS topic so store the topic result (use startswith as topic may not exist yet)
+        if isinstance(data_to_store, str) and (data_to_store.startswith("/") or
+                                               data_to_store in dict(rospy.get_published_topics()).keys()):
             if callback is None or not callable(callback):
                 callback = self.save
             self.subscriber = AutoSubscriber(data_to_store, callback=callback)
