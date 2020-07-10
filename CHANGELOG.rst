@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.7 (2020-07-10)
+------------------
 * Added verbose print to TopicStore objects (ROSType and Document Size)
 * Force subscriber when data storage key starts with '/'
   Otherwise if topics don't exist when data collection starts then the topics will never be subscribed to
