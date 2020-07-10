@@ -249,8 +249,63 @@ class TopicStore:
     def __call__(self, item):
         return self.msgs[item]
 
+    @staticmethod
+    def __get_size(obj, recurse=True, human_readable=True):
+        """Sum size of object & members. Utility function for printing document size, used in __repr__."""
+        from types import ModuleType, FunctionType
+        from gc import get_referents
+        import sys
+        blacklisted_types = (type, ModuleType, FunctionType)
+
+        if isinstance(obj, blacklisted_types):
+            raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
+        size = 0
+
+        if recurse:
+            seen_ids = set()
+            objects = [obj]
+            while objects:
+                need_referents = []
+                for obj in objects:
+                    if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
+                        seen_ids.add(id(obj))
+                        size += sys.getsizeof(obj)
+                        need_referents.append(obj)
+                objects = get_referents(*need_referents)
+        else:
+            size = sys.getsizeof(obj)
+
+        if not human_readable:
+            return size
+
+        for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+            if size < 1024.0:
+                break
+            size /= 1024.0
+        return "{:.2f}{}B".format(size, unit)
+
+    def __recurse_types(self, d=None, depth=1, tabs=1, sep='\n', print_size=False):
+        """Used by __repr__ to recurse dict and print types and sizes"""
+        s = ""
+        if depth == 1:
+            s += "TopicStore Object {}: {}".format(
+                datetime.fromtimestamp(self.dict["_ts_meta"]["sys_time"]).strftime('%d-%m-%Y %H:%M:%S'), "{"
+            )
+        if d is None:
+            d = self.msgs
+        for k, v in d.items():
+            s += "{}{}{}{}: ".format(sep, "\t" * depth, k, ("(" + self.__get_size(v) + ")") if print_size else "")
+            if isinstance(v, dict):
+                s += "{" + self.__recurse_types(v, depth + tabs) + sep + "\t" * depth + "}"
+            else:
+                s += "{}".format(type(v))
+
+        if depth == 1:
+            s += sep + "}"
+        return s
+
     def __repr__(self):
-        return str({k: type(self.msgs[k]) for k in self.msgs.keys()})
+        return self.__recurse_types(self.msgs)
 
     @staticmethod
     def __dict_to_ros_msg_dict(data_dict):
