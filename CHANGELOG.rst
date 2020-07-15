@@ -2,6 +2,22 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Added tests for >16MB document
+* Merge pull request `#5 <https://github.com/RaymondKirk/topic_store/issues/5>`_ from RaymondKirk/gridfs
+  Added GridFS support with zero API change `#4 <https://github.com/RaymondKirk/topic_store/issues/4>`_
+* Somewhat support deleting documents and gridfs associated objects
+* Len is now removed from TopicStorage
+* Initial commit of GridFS support (all bson.Binary types are stored in chunks)
+  Transparent dicts, so easily searchable by meta data.
+  The objects are automatically stored/retrieved from GridFS with no API changes.
+* Add GridFS dependency
+* Remove len from TopicStorage objects
+* By default don't print size due to heavy recursion of nested dicts
+  Use print(topic_store.__repr_\_(print_size=True)) to print sizes
+* Contributors: Raymond Tunstill (Kirk), RaymondKirk
+
 0.0.7 (2020-07-10)
 ------------------
 * Added verbose print to TopicStore objects (ROSType and Document Size)
