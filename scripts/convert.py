@@ -26,7 +26,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
     print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, client.uri))
 
     storage = TopicStorage.load(topic_store_file)
-    count = len(storage)  # TODO: very slow operation
+    count = 0  # TODO: very slow operation
     with tqdm(total=count) as progress_bar:
         for item in storage:
             try:

@@ -73,9 +73,9 @@ class TopicStorage(Storage):
     #             # In this case its an index error
     #             raise IndexError("File '{}' does not contain {} elements".format(self.path, item))
     #
-    def __len__(self):
-        print("len(TopicStorage) should not be used as it has to load all files before returning!")
-        count = 0
-        for _ in self:
-            count += 1
-        return count
+    # def __len__(self):
+    #     print("len(TopicStorage) should not be used as it has to load all files before returning!")
+    #     count = 0
+    #     for _ in self:
+    #         count += 1
+    #     return count

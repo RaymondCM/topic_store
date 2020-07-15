@@ -42,6 +42,7 @@
   <!-- Python dependencies  -->
   <exec_depend version_gte="1.0.1">python-pathlib</exec_depend>
   <exec_depend version_gte="3.6.1">python-pymongo</exec_depend>
+  <exec_depend version_gte="3.6.1">python-gridfs</exec_depend>
   <exec_depend version_gte="1.2.6">python-rospkg</exec_depend>
   <exec_depend version_gte="4.19.0">python-tqdm</exec_depend>
   <exec_depend version_gte="3.12">python-yaml</exec_depend>
