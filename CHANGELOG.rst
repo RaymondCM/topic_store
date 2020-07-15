@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.8 (2020-07-15)
+------------------
 * Added tests for >16MB document
 * Merge pull request `#5 <https://github.com/RaymondKirk/topic_store/issues/5>`_ from RaymondKirk/gridfs
   Added GridFS support with zero API change `#4 <https://github.com/RaymondKirk/topic_store/issues/4>`_
