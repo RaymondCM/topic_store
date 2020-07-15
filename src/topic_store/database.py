@@ -156,20 +156,15 @@ class MongoStorage(Storage):
             {'$group': {'_id': '$_ts_meta.session', 'sys_time': {'$first': "$_ts_meta.sys_time"}, "count": {'$sum': 1}}}
         ]))
 
-    def delete_many(self, query, *args, **kwargs):
-        """Deletes matched documents"""
-        raise NotImplementedError("Not tested since GridFS functionality added")
-        return self.collection.delete_many(query, *args, **kwargs)
-
-    def delete_one(self, query, *args, **kwargs):
-        """Deletes a matched document"""
-        raise NotImplementedError("Not tested since GridFS functionality added")
-        return self.collection.delete_one(query, *args, **kwargs)
-
     def delete_by_id(self, id_str, *args, **kwargs):
         """Deletes a document by id"""
-        raise NotImplementedError("Not tested since GridFS functionality added")
-        return self.delete_one({"_id": id_str}, *args, **kwargs)
+        def __delete_gridfs_docs(k, v):
+            if k.startswith("__gridfs_file_") and isinstance(v, bson.objectid.ObjectId):
+                self._fs.delete(v)
+            return k, v
+        parsed_document = self.reverse_parser(self.collection.find_one({"_id": id_str}, *args, **kwargs))
+        self.__apply_fn_to_nested_dict(parsed_document, fn=__delete_gridfs_docs)
+        return self.collection.delete_one({"_id": id_str}, *args, **kwargs)
 
     def __aggregate(self, pipeline, *args, **kwargs):
         """Returns TopicStoreCursor of the aggregate pipeline match in a collection"""
