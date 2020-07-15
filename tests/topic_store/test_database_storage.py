@@ -88,7 +88,32 @@ class TestDatabase:
             # Delete image message
             client.delete_by_id(im_result.inserted_id)
 
+    @pytest.mark.filterwarnings('ignore::DeprecationWarning')  # ros_numpy using deprecated methods
+    def test_large_document(self):
+        if not rospy.get_node_uri():
+            rospy.init_node("topic_store_tests")
+
+        client = MongoStorage(collection="python_tests")
+
+        # Insert >16MB document
+        random_array = np.random.random((3000, 3000, 3)).astype(np.float32)
+        message = ros_numpy.msgify(Image, random_array, encoding="32FC3")
+
+        # Insert image message
+        im_document = TopicStore({"image": message})
+        im_result = client.insert_one(im_document)
+
+        # Get image message and check data is the same
+        returned_im_document = client.find_by_id(im_result.inserted_id)
+        assert returned_im_document.id == im_result.inserted_id
+        retrieved_array = ros_numpy.numpify(returned_im_document.msgs["image"])
+        np.testing.assert_equal(random_array, retrieved_array)
+
+        # Delete image message
+        client.delete_by_id(im_result.inserted_id)
+
 
 if __name__ == '__main__':
     TestDatabase().test_documents()
     TestDatabase().test_image_encoding()
+    TestDatabase().test_large_document()
