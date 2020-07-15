@@ -2,6 +2,11 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.0.9 (2020-07-15)
+------------------
+* Removed GridFS package.xml entry (included in pymongo)
+* Contributors: RaymondKirk
+
 0.0.8 (2020-07-15)
 ------------------
 * Added tests for >16MB document
