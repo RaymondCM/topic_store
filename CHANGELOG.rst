@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.0 (2020-07-16)
+------------------
 * Merge pull request `#6 <https://github.com/RaymondKirk/topic_store/issues/6>`_ from RaymondKirk/fix_for_msg_depth_bug
   GridFS improvements and fix for nested permutations of (dict -> list -> object) such as TF messages
 * Updated README to reflect recent changes
