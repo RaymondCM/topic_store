@@ -5,10 +5,9 @@
 
 from __future__ import absolute_import, division, print_function
 
-from copy import copy
+import bson
 from datetime import datetime
 
-import bson
 import genpy
 import roslib.message
 import rospy
@@ -18,7 +17,6 @@ try:
     from collections import Mapping as MappingType
 except ImportError:
     from collections.abc import Mapping as MappingType
-
 
 __all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage", "MongoDBReverseParser"]
 
@@ -316,6 +314,7 @@ class TopicStore:
 
     @staticmethod
     def __convert_dict_to_msg(d):
+        """Internal function for python dict->ros message conversion, basic support for lists and partial ROS types."""
         if isinstance(d, dict) and "_ros_meta" in d:
             msg_type = d["_ros_meta"]["type"]
             if msg_type in ["genpy.Time", "genpy.Duration"] and all(s in d for s in ["secs", "nsecs"]):
@@ -342,45 +341,57 @@ class TopicStore:
         elif isinstance(d, (genpy.Time, genpy.Duration, ROSMessage)):
             for i in d.__slots__:
                 setattr(d, i, TopicStore.__convert_dict_to_msg(getattr(d, i)))
-        print(type(d))
         return d
 
     @staticmethod
-    def iterate_dict(d, parents=None):
+    def __extract_nested_dict_keys(d, parents=None):
+        """This function iterates over one dict and returns a list of tuples: (key, parent_keys).
+        Useful for looping through a multidimensional dictionary.
         """
-        This function iterates over one dict and returns a list of tuples: (key, value, parent_keys)
-        Usefull for looping through a multidimensional dictionary.
-        """
+        r = []
         if parents is None:
             parents = []
-        r = []
-        for k,v in d.iteritems():
-            if isinstance(v, dict):
-                r.extend(TopicStore.iterate_dict(v, parents + [k]))
-            elif isinstance(v, list):
-                r.append((k, v, parents))
-            else:
-                r.append((k, v, parents))
+
+        if isinstance(d, dict):
+            for k, v in d.iteritems():
+                if isinstance(v, dict):
+                    r.extend(TopicStore.__extract_nested_dict_keys(v, parents + [k]))
+                elif isinstance(v, list):
+                    for i in range(len(v)):
+                        r.extend(TopicStore.__extract_nested_dict_keys(v[i], parents + [k]))
+                else:
+                    r.append((k, parents))
 
         return r
 
     # TODO: This should be a depth first search because if a message has nested types, they may never be converted
     @staticmethod
-    def __dict_to_ros_msg_dict(data_dict,):
-        def nested_set(dic, keys, fn):
-            for key in keys[:-1]:
-                dic = dic.setdefault(key, {})
-            dic[keys[-1]] = fn(dic[keys[-1]])
+    def __dict_to_ros_msg_dict(data_dict, ):
+        """Internal function to convert key, value pairs in a dict to ROS message types if they contain meta."""
 
-        # Attempt to somewhat go top down
-        keys = TopicStore.iterate_dict(data_dict)
+        def nested_set(dic, keys, fn):
+            # Reduce dic to the last key and apply function to value
+            for key_index, next_key in enumerate(keys[:-1]):
+                # If the dic value becomes a list at any point then iterate over and finish the keys
+                if isinstance(dic, (list, set)):
+                    for d in dic:
+                        nested_set(d, keys[key_index:], fn)
+                else:  # Must be a dict if not a list (constraint of python<->ros types due to bson)
+                    dic = dic.setdefault(next_key, {})
+            # Only attempt to set if dic is a dict and key is in the key set
+            if isinstance(dic, MappingType) and keys[-1] in dic:
+                dic[keys[-1]] = fn(dic[keys[-1]])
+
+        # Do a depth first based parsing by sorting the unpacked multi-dim keys by length
+        keys = TopicStore.__extract_nested_dict_keys(data_dict)
         sorted_keys = sorted(keys, key=lambda sx: -len(sx[-1]))
         to_convert = [x for x in sorted_keys if "_ros_meta" in x[-1]]
 
-        for conversion_rule in to_convert:
-            key, value, parent_keys = conversion_rule
+        # Apply the function (python dict -> ROS message to all keys that contain ros_meta)
+        for key, parent_keys in to_convert:
             nested_set(data_dict, parent_keys[:-1], TopicStore.__convert_dict_to_msg)
-        data_dict = TopicStore.__convert_dict_to_msg(data_dict)
+
+        # data_dict = TopicStore.__convert_dict_to_msg(data_dict)  # this was an old-hack
 
         return data_dict
 
