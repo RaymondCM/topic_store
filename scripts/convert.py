@@ -8,17 +8,17 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
+import pymongo
 from datetime import datetime
 
 import pathlib
-import pymongo
 import rosbag
 import rospy
 from tqdm import tqdm
 
-from topic_store.scenario import ScenarioFileParser
-from topic_store.filesystem import TopicStorage
 from topic_store.database import MongoStorage
+from topic_store.filesystem import TopicStorage
+from topic_store.scenario import ScenarioFileParser
 
 
 def topic_store_to_mongodb(topic_store_file, scenario_file):
@@ -26,8 +26,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
     print("Converting '{}' to MongoDB '{}'".format(topic_store_file.name, client.uri))
 
     storage = TopicStorage.load(topic_store_file)
-    count = 0  # TODO: very slow operation
-    with tqdm(total=count) as progress_bar:
+    with tqdm() as progress_bar:
         for item in storage:
             try:
                 client.insert_one(item)
@@ -92,9 +91,13 @@ def mongodb_to_ros_bag(scenario_file, output_file):
                 msgs = item.to_ros_msg_list()
                 time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
                 for msg in msgs:
-                    source = msg._connection_header["topic"]
-                    if source:
-                        ros_bag.write(source, msg, time)
+                    if hasattr(msg, "_connection_header"):
+                        source = getattr(msg, "_connection_header")["topic"]
+                        if source:
+                            try:
+                                ros_bag.write(source, msg, time)
+                            except Exception as e:
+                                print("Could not write", source, 'because', e.message)
                 progress_bar.update()
     finally:
         print("Closing the ROS bag '{}'".format(output_file))
@@ -104,18 +107,21 @@ def mongodb_to_ros_bag(scenario_file, output_file):
 def topic_store_to_ros_bag(topic_store_file, output_file):
     print("Converting '{}' to ROS bag '{}'".format(topic_store_file.name, output_file.name))
     storage = TopicStorage.load(topic_store_file)
-    count = len(storage)  # TODO: very slow operation
     ros_bag = rosbag.Bag(str(output_file), 'w')
 
     try:
-        with tqdm(total=count) as progress_bar:
+        with tqdm() as progress_bar:
             for item in storage:
                 msgs = item.to_ros_msg_list()
                 time = rospy.Time.from_sec(item["_ts_meta"]["ros_time"])
                 for msg in msgs:
-                    source = msg._connection_header["topic"]
-                    if source:
-                        ros_bag.write(source, msg, time)
+                    if hasattr(msg, "_connection_header"):
+                        source = getattr(msg, "_connection_header")["topic"]
+                        if source:
+                            try:
+                                ros_bag.write(source, msg, time)
+                            except Exception as e:
+                                print("Could not write", source, 'because', e.message)
                 progress_bar.update()
     finally:
         print("Closing the ROS bag '{}'".format(output_file))

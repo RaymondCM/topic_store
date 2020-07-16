@@ -5,13 +5,18 @@
 
 from __future__ import absolute_import, division, print_function
 
+import bson
 from datetime import datetime
 
-import bson
 import genpy
 import roslib.message
 import rospy
 from genpy import Message as ROSMessage
+
+try:
+    from collections import Mapping as MappingType
+except ImportError:
+    from collections.abc import Mapping as MappingType
 
 __all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage", "MongoDBReverseParser"]
 
@@ -308,34 +313,87 @@ class TopicStore:
         return self.__recurse_types(self.msgs, print_size=print_size)
 
     @staticmethod
-    def __dict_to_ros_msg_dict(data_dict):
-        ros_msg_dict = {}
+    def __convert_dict_to_msg(d):
+        """Internal function for python dict->ros message conversion, basic support for lists and partial ROS types."""
+        if isinstance(d, dict) and "_ros_meta" in d:
+            msg_type = d["_ros_meta"]["type"]
+            if msg_type in ["genpy.Time", "genpy.Duration"] and all(s in d for s in ["secs", "nsecs"]):
+                cls = rospy.rostime.Time if "Time" in msg_type else rospy.rostime.Duration
+                del d["_ros_meta"]
+                cls = cls(**d)
+            else:
+                msg_class = roslib.message.get_message_class(msg_type)
+                if not msg_class:
+                    raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
+                cls = msg_class()
+                slot_names = list(msg_class.__slots__)
+                # Support copying connection header for ROSBag support
+                if hasattr(msg_class, "_connection_header") and "_connection_header" in d:
+                    slot_names.append("_connection_header")
+                for s in slot_names:  # or cls = msg_class(**v) after removing ros meta etc
+                    setattr(cls, s, d[s])
+            return cls
+        elif isinstance(d, dict):
+            for k, v in d.items():
+                d[k] = TopicStore.__convert_dict_to_msg(v)
+        elif isinstance(d, list):
+            d = [TopicStore.__convert_dict_to_msg(i) for i in d]
+        elif isinstance(d, (genpy.Time, genpy.Duration, ROSMessage)):
+            for i in d.__slots__:
+                setattr(d, i, TopicStore.__convert_dict_to_msg(getattr(d, i)))
+        return d
 
-        for k, v in data_dict.items():
-            if isinstance(v, dict):
-                v = TopicStore.__dict_to_ros_msg_dict(v)
-                if "_ros_meta" in v:
-                    msg_type = v["_ros_meta"]["type"]
-                    if msg_type in ["genpy.Time", "genpy.Duration"] and all(s in v for s in ["secs", "nsecs"]):
-                        cls = rospy.rostime.Time if "Time" in msg_type else rospy.rostime.Duration
-                        del v["_ros_meta"]
-                        cls = cls(**v)
-                    else:
-                        msg_class = roslib.message.get_message_class(msg_type)
-                        if not msg_class:
-                            raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
-                        cls = msg_class()
-                        slot_names = list(msg_class.__slots__)
-                        # Support copying connection header for ROSBag support
-                        if hasattr(msg_class, "_connection_header") and "_connection_header" in v:
-                            slot_names.append("_connection_header")
-                        for s in slot_names:  # or cls = msg_class(**v) after removing ros meta etc
-                            setattr(cls, s, v[s])
-                    # setattr(cls, "__ros_meta", v["_ros_meta"])
-                    v = cls
-            ros_msg_dict[k] = v
+    @staticmethod
+    def __extract_nested_dict_keys(d, parents=None):
+        """This function iterates over one dict and returns a list of tuples: (key, parent_keys).
+        Useful for looping through a multidimensional dictionary.
+        """
+        r = []
+        if parents is None:
+            parents = []
 
-        return ros_msg_dict
+        if isinstance(d, dict):
+            for k, v in d.iteritems():
+                if isinstance(v, dict):
+                    r.extend(TopicStore.__extract_nested_dict_keys(v, parents + [k]))
+                elif isinstance(v, list):
+                    for i in range(len(v)):
+                        r.extend(TopicStore.__extract_nested_dict_keys(v[i], parents + [k]))
+                else:
+                    r.append((k, parents))
+
+        return r
+
+    # TODO: This should be a depth first search because if a message has nested types, they may never be converted
+    @staticmethod
+    def __dict_to_ros_msg_dict(data_dict, ):
+        """Internal function to convert key, value pairs in a dict to ROS message types if they contain meta."""
+
+        def nested_set(dic, keys, fn):
+            # Reduce dic to the last key and apply function to value
+            for key_index, next_key in enumerate(keys[:-1]):
+                # If the dic value becomes a list at any point then iterate over and finish the keys
+                if isinstance(dic, (list, set)):
+                    for d in dic:
+                        nested_set(d, keys[key_index:], fn)
+                else:  # Must be a dict if not a list (constraint of python<->ros types due to bson)
+                    dic = dic.setdefault(next_key, {})
+            # Only attempt to set if dic is a dict and key is in the key set
+            if isinstance(dic, MappingType) and keys[-1] in dic:
+                dic[keys[-1]] = fn(dic[keys[-1]])
+
+        # Do a depth first based parsing by sorting the unpacked multi-dim keys by length
+        keys = TopicStore.__extract_nested_dict_keys(data_dict)
+        sorted_keys = sorted(keys, key=lambda sx: -len(sx[-1]))
+        to_convert = [x for x in sorted_keys if "_ros_meta" in x[-1]]
+
+        # Apply the function (python dict -> ROS message to all keys that contain ros_meta)
+        for key, parent_keys in to_convert:
+            nested_set(data_dict, parent_keys[:-1], TopicStore.__convert_dict_to_msg)
+
+        # data_dict = TopicStore.__convert_dict_to_msg(data_dict)  # this was an old-hack
+
+        return data_dict
 
     @staticmethod
     def __ros_msg_dict_to_list(ros_msg_dict):
@@ -343,7 +401,7 @@ class TopicStore:
         if not isinstance(ros_msg_dict, dict):
             return
         for key, value in ros_msg_dict.items():
-            if isinstance(value, ROSMessage) and hasattr(value, "_connection_header"):
+            if isinstance(value, ROSMessage):
                 yield value
             for ret in TopicStore.__ros_msg_dict_to_list(value):
                 yield ret
