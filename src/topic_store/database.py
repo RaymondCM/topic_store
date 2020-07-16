@@ -94,9 +94,11 @@ class MongoStorage(Storage):
 
     def __gridfs_ify(self, topic_store):
         """Places all bson.binary.Binary types in the gridfs files/storage system so no limit on 16MB documents"""
+        gridfs_put_kwargs = {"document_id": topic_store.id, "session_id": topic_store.session}
+
         def __grid_fs_binary_objects(k, v):
             if isinstance(v, bson.binary.Binary):
-                return "__gridfs_file_" + k, self._fs.put(v)
+                return "__gridfs_file_" + k, self._fs.put(v, **gridfs_put_kwargs)
             return k, v
         parsed_dict = self.parser(topic_store.dict.copy())
         return self.__apply_fn_to_nested_dict(parsed_dict, fn=__grid_fs_binary_objects)
