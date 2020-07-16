@@ -127,6 +127,6 @@ rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 - [x] Added convert to ROS bag from database compatibility (via convert.py)
 - [x] Added support for complex database creations via mongo configs
 - [x] Added URI inference from mongo configs to make API simpler
+- [x] Support for GridFS or document splitting via list declaration in the scenario files.
+- [ ] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
 - [ ] Added support for TLS/Auth in MongoClient and infer from mongo configs
-- [ ] Support for GridFS or document splitting via list declaration in the scenario files.
-- [ ] Integration of https://github.com/DreamingRaven/python-ezdb
