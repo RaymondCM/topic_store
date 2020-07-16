@@ -2,6 +2,19 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#6 <https://github.com/RaymondKirk/topic_store/issues/6>`_ from RaymondKirk/fix_for_msg_depth_bug
+  GridFS improvements and fix for nested permutations of (dict -> list -> object) such as TF messages
+* Updated README to reflect recent changes
+* Store original document and session ID in file meta of GridFS documents (for cleanup)
+* Fix for incompatible parsing of a dict -> list -> dict -> etc type nests
+  Search depth first (takes much longer though) but TF and other messages now supported
+* Fixes to conversion script (to rosbag from mongo/topic storage)
+* Attempt to fix nested dict recursion to fix ROS messages
+  Still having issues with TF messages but most others work. Problem is nested dicts of lists of dicts aren't parsed correctly with the _ros_meta field.
+* Contributors: Raymond Tunstill (Kirk), RaymondKirk
+
 0.0.9 (2020-07-15)
 ------------------
 * Removed GridFS package.xml entry (included in pymongo)
