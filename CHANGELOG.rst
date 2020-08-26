@@ -2,6 +2,13 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#7 <https://github.com/RaymondKirk/topic_store/issues/7>`_ from RaymondKirk/add_action_server_video
+  Added ability to collect sequences with the action server
+* Added ability to collect sequences with the action server
+* Contributors: Raymond Tunstill (Kirk), RaymondKirk
+
 0.1.0 (2020-07-16)
 ------------------
 * Merge pull request `#6 <https://github.com/RaymondKirk/topic_store/issues/6>`_ from RaymondKirk/fix_for_msg_depth_bug
