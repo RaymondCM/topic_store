@@ -78,6 +78,38 @@ class ScenarioRunner:
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
+    def init_way_point_action_server_video(self):
+        event_name = "action_lib_start_stop"
+        topic_to_watch = self.scenario.collection["watch_topic"]
+
+        self.events[event_name] = {"event": Event(), "data": False}
+        self.events[topic_to_watch] = {"event": Event(), "data": ""}
+
+        def __request(goal_msg):
+            should_start = str(goal_msg.message).lower() in ["true", "t", "start"]
+            starting_string = "Starting" if should_start else "Stopping"
+            self.log("{} data collection from '{}'".format(starting_string, action_lib_server_name))
+            self.set_event_msg_callback(should_start, event_name)
+
+            result = CollectDataResult(should_start)
+            feedback = CollectDataFeedback("{} data capture".format(starting_string))
+            self.service_server.publish_feedback(feedback)
+            self.service_server.set_succeeded(result)
+
+        action_lib_server_name = self.scenario.collection["action_server_name"]
+        self.log("Starting '{}' actionlib server".format(action_lib_server_name))
+        self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
+        self.service_server.start()
+
+        AutoSubscriber(topic_to_watch, callback=self.set_event_msg_callback, callback_args=topic_to_watch)
+
+        while not rospy.is_shutdown():
+            self.events[topic_to_watch]["event"].wait()
+            self.events[topic_to_watch]["event"].clear()
+            if self.events[event_name]["data"]:
+                self.save()
+                self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
+
     def set_event_msg_callback(self, data, event_id):
         if event_id in self.events:
             self.events[event_id]["data"] = data

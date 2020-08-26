@@ -27,6 +27,7 @@ class ScenarioFileParser:
     __field_meta = {
         "context": "",
         "collection": {
+            "action_server_video": ["method", "action_server_name", "watch_topic"],
             "action_server": ["method", "action_server_name"],
             "timer": ["method", "timer_delay"],
             "event": ["method", "watch_topic"]
