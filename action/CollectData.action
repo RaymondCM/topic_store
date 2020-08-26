@@ -1,4 +1,5 @@
 # Goal
+string message
 ---
 # Result
 bool job_success  # True if the job was a success, False otherwise

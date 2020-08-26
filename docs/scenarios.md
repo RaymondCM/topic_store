@@ -94,6 +94,17 @@ collection:
   method: "action_server"
   action_server_name: "collect_data"
 ```
+ - `action_server_video`: Will wait until [actionlib](http://wiki.ros.org/actionlib/Tutorials) requests are received on 
+ `collection.action_server_name` with a request to start/stop data collection. In the action server request you
+  can specify `start|stop|true|false|t|f` to start or stop capturing data every time `wait_topic` publishes a new message. 
+  The `wait_topic` field is string that must be a valid rostopic. To test you can run to get a graphical request system
+   `rosrun actionlib axclient.py '''/collect_data'''`. 
+```yaml
+collection:
+  method: "action_server_video"
+  action_server_name: "collect_data"
+  watch_topic: "/realsense_camera/color/image_raw"
+```
  - `timer`: Captures data every `timer_delay` seconds. The `timer_delay` field is integer. 
  Ideal for when the robot is in continuous operation in unmapped environments.
 ```yaml
