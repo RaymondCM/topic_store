@@ -4,7 +4,8 @@ context: "default"                      # Context defines the data collection co
 
 storage:
   method: "database"                    # Where to store the data (database or filesystem)
-  config: "default"                     # If database specify the config file containing the IP and Port so URI can be inferred (default_dbPath="${HOME}/.ros/topic_store/database")
+  config: "default"                     # If database specify the config file (default=package_root/config/default_db_config.yaml)
+                                        # containing the IP and Port so URI can be inferred (default_dbPath="${HOME}/.ros/topic_store/database")
 
 data: {
   topics: {

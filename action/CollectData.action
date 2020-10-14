@@ -1,5 +1,5 @@
 # Goal
-string message
+string message  # When method==action_server_video "true" will record data and "false" will pause recording
 ---
 # Result
 bool job_success  # True if the job was a success, False otherwise
