@@ -194,7 +194,8 @@ def __convert():
         # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
         db_name = None
         if "authSource" in srv:
-            options = {k: v for k, v in [s.split('=') for s in urlparse(srv).query.split("&")]}
+            options = [s.split('=') for s in urlparse(srv).query.split("&") if s]
+            options = {k: v for k, v in options}
             if "authSource" in options:
                 db_name = options["authSource"]
         client = MongoStorage(collection=collection, uri=srv, db_name=db_name)
