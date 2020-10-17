@@ -8,7 +8,10 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
+import json
+
 import pymongo
+from pymongo.collection import ObjectId
 from datetime import datetime
 
 import pathlib
@@ -58,11 +61,14 @@ def get_mongo_storage_by_session(client):
     return client.find()
 
 
-def mongodb_to_topic_store(scenario_file, topic_store_file):
-    client = MongoStorage.load(scenario_file)
-    print("Converting MongoDB '{}' to '{}'".format(client.uri, topic_store_file.name))
+def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None):
+    print("Converting MongoDB '{}' to '{}'".format(mongodb_client.uri, topic_store_file.name))
 
-    storage = get_mongo_storage_by_session(client)
+    if query is None:
+        storage = get_mongo_storage_by_session(mongodb_client)
+    else:
+        storage = mongodb_client.find(query)
+
     count = storage.cursor.count()
 
     topic_storage = TopicStorage(topic_store_file)
@@ -73,14 +79,14 @@ def mongodb_to_topic_store(scenario_file, topic_store_file):
             progress_bar.update()
 
 
-def mongodb_to_ros_bag(scenario_file, output_file):
-    scenario = ScenarioFileParser(scenario_file)
-    if scenario.storage["method"] != "database":
-        raise ValueError("Scenario file '{}' storage.method is not set to 'database'".format(scenario_file))
-    print("Converting MongoDB '{}' to ROS bag '{}'".format(scenario.storage["uri"], output_file.name))
-    client = MongoStorage(uri=scenario.storage["uri"], collection=scenario.context)
+def mongodb_to_ros_bag(mongodb_client, output_file, query=None):
+    print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
-    storage = get_mongo_storage_by_session(client)
+    if query is None or not isinstance(query, dict):
+        storage = get_mongo_storage_by_session(mongodb_client)
+    else:
+        storage = mongodb_client.find(query)
+
     count = storage.cursor.count()
 
     ros_bag = rosbag.Bag(str(output_file), 'w')
@@ -132,31 +138,69 @@ def __convert():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", help="Input File", type=str, required=True)
     parser.add_argument("-o", "--output", help="Output File", type=str, required=True)
+    parser.add_argument("-c", "--collection", help="MongoDB collection to use if URI passed as --input", type=str,
+                        required=False)
+    parser.add_argument("-q", "--query", help='MongoDB input query as dict '
+                                              '(example: -q \'{"_id": "ObjectId(5f718a354e5e8239dcd1eca1)"}\'',
+                        type=str, required=False, default='{"_id":"ObjectId(5f718a354e5e8239dcd1eca1)"}')
     args = parser.parse_args()
 
     rospy.init_node("topic_store_convert", anonymous=True)
-    input_file = pathlib.Path(args.input)
-    output_file = pathlib.Path(args.output)
+    input_path = pathlib.Path(args.input)
+    output_path = pathlib.Path(args.output)
 
-    if not input_file.exists():
-        raise IOError("Input file '{}' does not exist".format(input_file))
-    # if output_file.exists():
-    #     raise IOError("Output file '{}' already exists".format(output_file))
+    # if not input_path.exists():
+    #     raise IOError("Input file '{}' does not exist".format(input_path))
 
-    if input_file.suffix == ".bag":
+    if input_path.suffix == ".bag":
         raise NotImplementedError("Converting from ROS bags is not currently supported. "
                                   "The conversion to ROS bags is lossy and requires adding meta data to reconstruct"
                                   "the original .topic_store or database documents")
-    elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".bag":
-        topic_store_to_ros_bag(input_file, output_file)
-    elif input_file.suffix == ".yaml" and output_file.suffix == TopicStorage.suffix:
-        mongodb_to_topic_store(input_file, output_file)
-    elif input_file.suffix == ".yaml" and output_file.suffix == ".bag":
-        mongodb_to_ros_bag(input_file, output_file)
-    elif input_file.suffix == TopicStorage.suffix and output_file.suffix == ".yaml":
-        topic_store_to_mongodb(input_file, output_file)
+    elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".bag":
+        topic_store_to_ros_bag(input_path, output_path)
+    elif input_path.suffix == ".yaml" and output_path.suffix == TopicStorage.suffix:
+        mongodb_to_topic_store(MongoStorage.load(input_path), output_path)
+    elif input_path.suffix == ".yaml" and output_path.suffix == ".bag":
+        mongodb_to_ros_bag(MongoStorage.load(input_path), output_path)
+    elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".yaml":
+        topic_store_to_mongodb(input_path, output_path)
+    elif isinstance(args.input, str) and "mongodb://" in args.input:
+        if not hasattr(args, "query") or not args.query:
+            raise ValueError("If input is a MongoDB URI you must specify a DB query -q/--query to export data")
+        if not hasattr(args, "collection") or not args.collection:
+            raise ValueError("If input is a MongoDB URI you must specify a DB collection -c/--collection to query data")
+        # Try to parse a query string to a dict and perform some basic cleaning
+        # The query string will filter the db documents by client.find(query)
+        try:
+            query = json.loads(args.query)
+        except ValueError:
+            print("Query parameter cannot be parsed as a python dict '{}'".format(args.query))
+            raise
+
+        # Some simple rules to support searching by ID from console
+        for k, v in query.items():
+            if isinstance(v, (str, unicode)) and (v.startswith('ObjectId(') and v.endswith(')')):
+                print("Converting query field '{}' to ObjectId".format(k))
+                query[k] = ObjectId(str(v[9:-1]))
+
+        collection = args.collection
+
+        srv = args.input
+        db_name = None
+        if "authSource" in srv:
+            auth_source = [s.split("=")[-1] for s in srv.split('&') if "authSource" in s]
+            if len(auth_source) == 1:
+                db_name = auth_source[0]
+        client = MongoStorage(collection=collection, uri=srv, db_name=db_name)
+
+        if output_path.suffix == ".bag":
+            mongodb_to_ros_bag(client, output_path, query=query)
+        elif output_path.suffix == TopicStorage.suffix:
+            mongodb_to_topic_store(client, output_path, query=query)
+        else:
+            raise ValueError("No valid conversion from Mongo URI '{}' to '{}' file".format(client.uri, output_path))
     else:
-        print("No conversion or migration for '{}' to '{}'".format(input_file, output_file))
+        print("No conversion or migration for '{}' to '{}'".format(input_path, output_path))
 
 
 if __name__ == '__main__':
