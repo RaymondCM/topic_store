@@ -19,6 +19,11 @@ import rosbag
 import rospy
 from tqdm import tqdm
 
+try:
+    from urlparse import urlparse
+except ImportError:  # Py3
+    from urllib.parse import urlparse
+
 from topic_store.database import MongoStorage
 from topic_store.filesystem import TopicStorage
 from topic_store.scenario import ScenarioFileParser
@@ -165,6 +170,9 @@ def __convert():
     elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".yaml":
         topic_store_to_mongodb(input_path, output_path)
     elif isinstance(args.input, str) and "mongodb://" in args.input:
+        srv = args.input
+        collection = args.collection
+
         if not hasattr(args, "query") or not args.query:
             raise ValueError("If input is a MongoDB URI you must specify a DB query -q/--query to export data")
         if not hasattr(args, "collection") or not args.collection:
@@ -183,14 +191,12 @@ def __convert():
                 print("Converting query field '{}' to ObjectId".format(k))
                 query[k] = ObjectId(str(v[9:-1]))
 
-        collection = args.collection
-
-        srv = args.input
+        # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
         db_name = None
         if "authSource" in srv:
-            auth_source = [s.split("=")[-1] for s in srv.split('&') if "authSource" in s]
-            if len(auth_source) == 1:
-                db_name = auth_source[0]
+            options = {k: v for k, v in [s.split('=') for s in urlparse(srv).query.split("&")]}
+            if "authSource" in options:
+                db_name = options["authSource"]
         client = MongoStorage(collection=collection, uri=srv, db_name=db_name)
 
         if output_path.suffix == ".bag":
