@@ -117,6 +117,7 @@ rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 Example call:
   
 * with typical mongodb URI for SSL and authentication
+* on database `ff_rasberry` and collection `2020_riseholme_framos_cameras`
 * including a query (`-q`) for a specific document
 * and a projection to return only sub-documents (`-p`)
 
