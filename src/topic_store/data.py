@@ -331,7 +331,13 @@ class TopicStore:
                 if hasattr(msg_class, "_connection_header") and "_connection_header" in d:
                     slot_names.append("_connection_header")
                 for s in slot_names:  # or cls = msg_class(**v) after removing ros meta etc
-                    setattr(cls, s, d[s])
+                    try:
+                        setattr(cls, s, d[s])
+                    except KeyError as e:
+                        # Here we accept that if the message type has changed that we cannot
+                        # necessarily fill all slots as we'd like. Maybe a warning should be logged, though
+                        pass
+
             return cls
         elif isinstance(d, dict):
             for k, v in d.items():
