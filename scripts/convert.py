@@ -84,13 +84,16 @@ def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None):
             progress_bar.update()
 
 
-def mongodb_to_ros_bag(mongodb_client, output_file, query=None):
+def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None):
     print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
     if query is None or not isinstance(query, dict):
         storage = get_mongo_storage_by_session(mongodb_client)
     else:
-        storage = mongodb_client.find(query)
+        if projection:
+            storage = mongodb_client.find(query, projection)
+        else:
+            storage = mongodb_client.find(query)
 
     count = storage.cursor.count()
 
@@ -148,6 +151,9 @@ def __convert():
     parser.add_argument("-q", "--query", help='MongoDB input query as dict '
                                               '(example: -q \'{"_id": "ObjectId(5f718a354e5e8239dcd1eca1)"}\'',
                         type=str, required=False, default='{"_id":"ObjectId(5f718a354e5e8239dcd1eca1)"}')
+    parser.add_argument("-p", "--projection", help='MongoDB input projection as dict '
+                                              '(example: -p \'{"name": 1}\'',
+                        type=str, required=False, default=None)
     args = parser.parse_args()
 
     rospy.init_node("topic_store_convert", anonymous=True)
@@ -185,6 +191,17 @@ def __convert():
             print("Query parameter cannot be parsed as a python dict '{}'".format(args.query))
             raise
 
+        # Try to parse a projection string to a dict and perform some basic cleaning
+        # The projection string will filter the db documents by client.find(query)
+        if args.projection:
+            try:
+                projection = json.loads(args.projection)
+            except ValueError:
+                print("Query parameter cannot be parsed as a python dict '{}'".format(args.query))
+                raise
+        else:
+            projection = None
+
         # Some simple rules to support searching by ID from console
         for k, v in query.items():
             if isinstance(v, (str, unicode)) and (v.startswith('ObjectId(') and v.endswith(')')):
@@ -201,7 +218,7 @@ def __convert():
         client = MongoStorage(collection=collection, uri=srv, db_name=db_name)
 
         if output_path.suffix == ".bag":
-            mongodb_to_ros_bag(client, output_path, query=query)
+            mongodb_to_ros_bag(client, output_path, query=query, projection=projection)
         elif output_path.suffix == TopicStorage.suffix:
             mongodb_to_topic_store(client, output_path, query=query)
         else:
