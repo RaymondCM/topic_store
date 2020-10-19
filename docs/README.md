@@ -112,6 +112,19 @@ connection information as the input file.
 rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 ```
 
+## Export from Mongodb query into rosbag
+
+Example call:
+  
+* with typical mongodb URI for SSL and authentication
+* on database `ff_rasberry` and collection `2020_riseholme_framos_cameras`
+* including a query (`-q`) for a specific document
+* and a projection to return only sub-documents (`-p`)
+
+```bash
+convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tlsAllowInvalidCertificates=true" -c 2020_riseholme_framos_cameras -q '{"_id":"ObjectId(5f115ee6af915351df739757)"}' -p '{"cameras.top.color":1, "robot": 1}' -o out.bag
+```
+
 # Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
