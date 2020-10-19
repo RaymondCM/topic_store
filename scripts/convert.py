@@ -44,7 +44,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
             progress_bar.update()
 
 
-def get_mongo_storage_by_session(client):
+def get_mongo_storage_by_session(client, projection):
     sessions = client.get_unique_sessions()
     if len(sessions) > 1:
         s_lut = sorted([{
@@ -58,7 +58,7 @@ def get_mongo_storage_by_session(client):
             try:
                 char = raw_input("Please enter a number or enter for all: ")
                 if char is "":
-                    return client.find()
+                    return client.find(projection=projection)
                 return client.find_by_session_id(s_lut[int(char)]["id"])
             except (EOFError, ValueError, IndexError):
                 print("Please choose an appropriate option")
@@ -66,13 +66,13 @@ def get_mongo_storage_by_session(client):
     return client.find()
 
 
-def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None):
+def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, projection=None):
     print("Converting MongoDB '{}' to '{}'".format(mongodb_client.uri, topic_store_file.name))
 
-    if query is None:
-        storage = get_mongo_storage_by_session(mongodb_client)
+    if query is None or not isinstance(query, dict):
+        storage = get_mongo_storage_by_session(mongodb_client, projection)
     else:
-        storage = mongodb_client.find(query)
+        storage = mongodb_client.find(query, projection)
 
     count = storage.cursor.count()
 
@@ -88,12 +88,9 @@ def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None)
     print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
     if query is None or not isinstance(query, dict):
-        storage = get_mongo_storage_by_session(mongodb_client)
+        storage = get_mongo_storage_by_session(mongodb_client, projection)
     else:
-        if projection:
-            storage = mongodb_client.find(query, projection)
-        else:
-            storage = mongodb_client.find(query)
+        storage = mongodb_client.find(query, projection)
 
     count = storage.cursor.count()
 
@@ -177,29 +174,23 @@ def __convert():
     elif isinstance(args.input, str) and "mongodb://" in args.input:
         srv = args.input
         collection = args.collection
+        query = args.query
+        projection = args.projection
 
         if not hasattr(args, "query") or not args.query:
             raise ValueError("If input is a MongoDB URI you must specify a DB query -q/--query to export data")
         if not hasattr(args, "collection") or not args.collection:
             raise ValueError("If input is a MongoDB URI you must specify a DB collection -c/--collection to query data")
-        # Try to parse a query string to a dict and perform some basic cleaning
-        # The query string will filter the db documents by client.find(query)
-        try:
-            query = json.loads(args.query)
-        except ValueError:
-            print("Query parameter cannot be parsed as a python dict '{}'".format(args.query))
-            raise
 
-        # Try to parse a projection string to a dict and perform some basic cleaning
-        # The projection string will filter the db documents by client.find(query)
-        if args.projection:
+        # Try to parse a query/projection string to a dict and perform some basic cleaning
+        # The query string will filter the db documents by client.find(query)
+        if query is not None:
             try:
-                projection = json.loads(args.projection)
+                query, projection = [x if x is None else json.loads(x) for x in [args.query, args.projection]]
             except ValueError:
-                print("Query parameter cannot be parsed as a python dict '{}'".format(args.query))
+                print("Query/Projection parameter cannot be parsed as a python dict \nQ: '{}'\nP: '{}'".format(
+                    args.query, args.projection))
                 raise
-        else:
-            projection = None
 
         # Some simple rules to support searching by ID from console
         for k, v in query.items():
@@ -219,7 +210,7 @@ def __convert():
         if output_path.suffix == ".bag":
             mongodb_to_ros_bag(client, output_path, query=query, projection=projection)
         elif output_path.suffix == TopicStorage.suffix:
-            mongodb_to_topic_store(client, output_path, query=query)
+            mongodb_to_topic_store(client, output_path, query=query, projection=projection)
         else:
             raise ValueError("No valid conversion from Mongo URI '{}' to '{}' file".format(client.uri, output_path))
     else:
