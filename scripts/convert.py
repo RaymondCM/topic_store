@@ -148,11 +148,10 @@ def __convert():
     parser.add_argument("-o", "--output", help="Output File", type=str, required=True)
     parser.add_argument("-c", "--collection", help="MongoDB collection to use if URI passed as --input", type=str,
                         required=False)
-    parser.add_argument("-q", "--query", help='MongoDB input query as dict '
-                                              '(example: -q \'{"_id": "ObjectId(5f718a354e5e8239dcd1eca1)"}\'',
-                        type=str, required=False, default='{"_id":"ObjectId(5f718a354e5e8239dcd1eca1)"}')
-    parser.add_argument("-p", "--projection", help='MongoDB input projection as dict '
-                                              '(example: -p \'{"name": 1}\'',
+    parser.add_argument("-q", "--query", help='MongoDB input query as dict (example: -q '
+                                              '\'{"_id": "ObjectId(5f718a354e5e8239dcd1eca1)"}\'', type=str,
+                        required=False, default=None)
+    parser.add_argument("-p", "--projection", help='MongoDB input projection as dict (example: -p \'{"name": 1}\'',
                         type=str, required=False, default=None)
     args = parser.parse_args()
 
