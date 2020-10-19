@@ -59,11 +59,11 @@ def get_mongo_storage_by_session(client, projection):
                 char = raw_input("Please enter a number or enter for all: ")
                 if char is "":
                     return client.find(projection=projection)
-                return client.find_by_session_id(s_lut[int(char)]["id"])
+                return client.find_by_session_id(s_lut[int(char)]["id"], projection=projection)
             except (EOFError, ValueError, IndexError):
                 print("Please choose an appropriate option")
                 continue
-    return client.find()
+    return client.find(projection=projection)
 
 
 def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, projection=None):
