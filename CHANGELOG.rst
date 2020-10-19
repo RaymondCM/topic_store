@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.2 (2020-10-19)
+------------------
 * Merge pull request `#8 <https://github.com/RaymondKirk/topic_store/issues/8>`_ from RaymondKirk/generic_db_rosbag_support
   Generic stream from DB uri and query support to rosbag and topic objects
 * Add missing projection kwargs from tests
