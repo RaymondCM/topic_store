@@ -324,14 +324,23 @@ class TopicStore:
             else:
                 msg_class = roslib.message.get_message_class(msg_type)
                 if not msg_class:
-                    raise rospy.ROSException("Cannot load message class for [{}]".format(msg_type))
+                    # TODO: Should this rospy.logwarn and just return python dict? Otherwise projection needed so it
+                    #  doesn't error
+                    raise rospy.ROSException("Cannot load message class for [{}].  Please ensure the relevant package "
+                                             "is installed on your system.".format(msg_type))
                 cls = msg_class()
                 slot_names = list(msg_class.__slots__)
                 # Support copying connection header for ROSBag support
                 if hasattr(msg_class, "_connection_header") and "_connection_header" in d:
                     slot_names.append("_connection_header")
                 for s in slot_names:  # or cls = msg_class(**v) after removing ros meta etc
-                    setattr(cls, s, d[s])
+                    try:
+                        setattr(cls, s, d[s])
+                    except KeyError as e:
+                        # Here we accept that if the message type has changed that we cannot necessarily fill all slots
+                        rospy.logwarn("Could not set slot '{}' for class '{}' maybe the message definitions are "
+                                      "incompatible".format(s, cls))
+
             return cls
         elif isinstance(d, dict):
             for k, v in d.items():

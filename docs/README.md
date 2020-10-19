@@ -112,6 +112,20 @@ connection information as the input file.
 rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 ```
 
+## Export from Mongodb query into rosbag/filesystem
+
+Example call:
+  
+* With typical mongodb URI for SSL and authentication
+* On database `ff_rasberry` and collection `2020_riseholme_framos_cameras`
+* Specify database connection URI (`-i`) with db name `authSource=database`
+* Including a query (`-q`) for a specific document
+* Add projection to return only sub-documents (`-p`)
+
+```bash
+convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tlsAllowInvalidCertificates=true" -c 2020_riseholme_framos_cameras -q '{"_id":"ObjectId(5f115ee6af915351df739757)"}' -p '{"cameras.top.color":1, "robot": 1}' -o out.bag
+```
+
 # Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
@@ -128,5 +142,6 @@ rosrun topic_store convert.py -i scenario_config.yaml -o output.topic_store
 - [x] Added support for complex database creations via mongo configs
 - [x] Added URI inference from mongo configs to make API simpler
 - [x] Support for GridFS or document splitting via list declaration in the scenario files.
-- [ ] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
+- [x] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
+- [x] Added partial support for TLS/Auth in MongoClient (use uri arg or convert.py with -u)
 - [ ] Added support for TLS/Auth in MongoClient and infer from mongo configs

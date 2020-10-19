@@ -36,7 +36,7 @@ class MongoStorage(Storage):
     """
     suffix = ".yaml"
 
-    def __init__(self, config=None, collection="default", uri=None, db_name="topic_store", verbose=False):
+    def __init__(self, config=None, collection="default", uri=None, db_name=None, verbose=False):
         """
 
         Args:
@@ -44,6 +44,8 @@ class MongoStorage(Storage):
             collection: The collection to manage
             uri: URI overload, if passed will attempt to connect directly and config not used
         """
+        if db_name is None:
+            db_name = "topic_store"
         self.verbose = verbose
         self.uri = uri
         if self.uri is None:

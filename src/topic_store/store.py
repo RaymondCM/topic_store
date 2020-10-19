@@ -6,7 +6,6 @@
 from __future__ import absolute_import, division, print_function
 
 import rospy
-import rostopic
 
 from topic_store.data import TopicStore
 
@@ -18,6 +17,7 @@ class AutoSubscriber:
 
     def __init__(self, name, callback=None, callback_args=None):
         self.topic = name
+        import rostopic  # No python package so here to enable some non-ros functionality
 
         topic_class = rostopic.get_topic_class(self.topic)
         topic_type = rostopic.get_topic_type(self.topic)
