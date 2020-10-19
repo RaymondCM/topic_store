@@ -2,6 +2,29 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#8 <https://github.com/RaymondKirk/topic_store/issues/8>`_ from RaymondKirk/generic_db_rosbag_support
+  Generic stream from DB uri and query support to rosbag and topic objects
+* Add missing projection kwargs from tests
+* Raise warn for slot errors
+* Updated README.md to include road map and topic_store
+* Move rostopic import to AutoSubscriber msg definition ready for PyPi
+* Projection improvements (include file system and get by session)
+* Remove default query cli arg
+* Merge pull request `#10 <https://github.com/RaymondKirk/topic_store/issues/10>`_ from marc-hanheide/feature_projection
+  Feature projection
+* added missing bits of documentation
+* added first documentation for mongo->rosbag
+* added projection for mongo->rosbag
+* ignore errors in slot filling
+  that are due to an outdated ROS message definition
+* Fixed options parsing to not break on malformed uris
+* Better authSource parsing
+* Initial support for generic DB queries and URI inputs to ROSbag and topic objects
+* Allow db namme specification in database.py
+* Contributors: Marc Hanheide, Raymond Tunstill (Kirk), RaymondKirk
+
 0.1.1 (2020-08-26)
 ------------------
 * Merge pull request `#7 <https://github.com/RaymondKirk/topic_store/issues/7>`_ from RaymondKirk/add_action_server_video
