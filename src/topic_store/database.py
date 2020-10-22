@@ -149,9 +149,15 @@ class MongoStorage(Storage):
 
         # If projections exist we must append _ts_meta to it to reconstruct the original object
         if len(args) >= 2 and isinstance(args[1], dict):
-            args[1]["_ts_meta"] = 1  # Force _ts_meta always
+            if all(x == 1 for x in args[1].values()):
+                args[1]["_ts_meta"] = 1  # Force _ts_meta always if projection is an inclusion rule
+            if "_ts_meta" in args[1] and args[1]["_ts_meta"] == 0:  # Don't allow the user to exclude _ts_meta
+                args[1].pop("_ts_meta")
         if "projection" in kwargs:
-            kwargs["projection"]["_ts_meta"] = 1
+            if all(x == 1 for x in kwargs["projection"].values()):
+                kwargs["projection"]["_ts_meta"] = 1
+            if "_ts_meta" in kwargs["projection"] and kwargs["projection"]["_ts_meta"] == 0:
+                kwargs["projection"].pop("_ts_meta")
 
         return skip_fetch_binary, args, kwargs
 
