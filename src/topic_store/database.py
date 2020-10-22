@@ -141,18 +141,41 @@ class MongoStorage(Storage):
         """Update a document field by ID changes all keys in kwargs"""
         return self.update_one(query={'_id': id_str}, update={"$set": kwargs})
 
+    @staticmethod
+    def __parse_find_args_kwargs(args, kwargs):
+        """Utility function to clean *args and **kwargs to collection.find() function calls"""
+        # Allow the user to not auto fetch blob data
+        skip_fetch_binary = kwargs.pop("skip_fetch_binary", False)
+
+        # If projections exist we must append _ts_meta to it to reconstruct the original object
+        if len(args) >= 2 and isinstance(args[1], dict):
+            args[1]["_ts_meta"] = 1  # Force _ts_meta always
+        if "projection" in kwargs:
+            kwargs["projection"]["_ts_meta"] = 1
+
+        return skip_fetch_binary, args, kwargs
+
     def find(self, *args, **kwargs):
         """Returns TopicStoreCursor to all documents in the query"""
+        skip_fetch_binary, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+
         find_cursor = self.collection.find(*args, **kwargs)
-        return TopicStoreCursor(find_cursor, apply_fn=self.__ungridfs_ify)
+
+        return TopicStoreCursor(find_cursor, apply_fn=None if skip_fetch_binary else self.__ungridfs_ify)
 
     __iter__ = find
 
     def find_one(self, query, *args, **kwargs):
         """Returns a matched TopicStore document"""
+        skip_fetch_binary, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+
         doc = self.collection.find_one(query, *args, **kwargs)
+        if not doc:  # Return if doc not found
+            return doc
+
         parsed_document = self.reverse_parser(doc)
-        parsed_document = self.__ungridfs_ify(parsed_document)
+        if not skip_fetch_binary:
+            parsed_document = self.__ungridfs_ify(parsed_document)
         return TopicStore(parsed_document)
 
     def find_by_id(self, id_str, *args, **kwargs):
