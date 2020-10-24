@@ -146,6 +146,7 @@ class MongoStorage(Storage):
         """Utility function to clean *args and **kwargs to collection.find() function calls"""
         # Allow the user to not auto fetch blob data
         skip_fetch_binary = kwargs.pop("skip_fetch_binary", False)
+        skip_on_error = kwargs.pop("skip_on_error", False)
 
         # If projections exist we must append _ts_meta to it to reconstruct the original object
         if len(args) >= 2 and isinstance(args[1], dict):
@@ -159,30 +160,41 @@ class MongoStorage(Storage):
             if "_ts_meta" in kwargs["projection"] and kwargs["projection"]["_ts_meta"] == 0:
                 kwargs["projection"].pop("_ts_meta")
 
-        return skip_fetch_binary, args, kwargs
+        return skip_fetch_binary, skip_on_error, args, kwargs
 
     def find(self, *args, **kwargs):
         """Returns TopicStoreCursor to all documents in the query"""
-        skip_fetch_binary, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
 
         find_cursor = self.collection.find(*args, **kwargs)
 
-        return TopicStoreCursor(find_cursor, apply_fn=None if skip_fetch_binary else self.__ungridfs_ify)
+        return TopicStoreCursor(find_cursor, apply_fn=None if skip_fetch_binary else self.__ungridfs_ify,
+                                skip_on_error=skip_on_error)
 
     __iter__ = find
 
     def find_one(self, query, *args, **kwargs):
         """Returns a matched TopicStore document"""
-        skip_fetch_binary, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+        # TODO: remove FIND_ONE function in place of generic find function
+        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
 
-        doc = self.collection.find_one(query, *args, **kwargs)
-        if not doc:  # Return if doc not found
+        doc = None
+        try:
+            doc = self.collection.find_one(query, *args, **kwargs)
+            if not doc:  # Return if doc not found
+                return doc
+
+            parsed_document = self.reverse_parser(doc)
+            if not skip_fetch_binary:
+                parsed_document = self.__ungridfs_ify(parsed_document)
+            return TopicStore(parsed_document)
+        except Exception as e:
+            if not skip_on_error:
+                raise
+            print("Skipping document '{}' because '{}'".format(
+                (doc.get('id') + " ") if doc else None, e.message)
+            )
             return doc
-
-        parsed_document = self.reverse_parser(doc)
-        if not skip_fetch_binary:
-            parsed_document = self.__ungridfs_ify(parsed_document)
-        return TopicStore(parsed_document)
 
     def find_by_id(self, id_str, *args, **kwargs):
         """Returns a matched TopicStore document"""
@@ -233,23 +245,33 @@ class MongoStorage(Storage):
 class TopicStoreCursor:
     """Wrapper for a pymongo.cursor.Cursor object to return documents as the TopicStore"""
 
-    def __init__(self, cursor, apply_fn=None):
+    def __init__(self, cursor, apply_fn=None, skip_on_error=False):
         self.parser = MongoDBReverseParser()
         self.apply_fn = apply_fn
+        self.skip_on_error = skip_on_error
         # Copy the cursor to this parent class
         self.cursor = cursor
 
+    def __get(self, cursor_ret):
+        document = None
+        try:
+            document = self.parser(cursor_ret)
+            if self.apply_fn:
+                document = self.apply_fn(document)
+            return TopicStore(document)
+        except Exception as e:
+            if not self.skip_on_error:
+                raise
+            print("Skipping document '{}' because '{}'".format(
+                (document.get('id') + " ") if document else None, e.message)
+            )
+            return document
+
     def __getitem__(self, item):
-        document = self.parser(self.cursor.__getitem__(item))
-        if self.apply_fn:
-            document = self.apply_fn(document)
-        return TopicStore(document)
+        return self.__get(self.cursor.__getitem__(item))
 
     def next(self):
-        document = self.parser(self.cursor.next())
-        if self.apply_fn:
-            document = self.apply_fn(document)
-        return TopicStore(document)
+        return self.__get(self.cursor.next())
 
     __next__ = next
 
