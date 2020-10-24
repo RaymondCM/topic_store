@@ -44,7 +44,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
             progress_bar.update()
 
 
-def get_mongo_storage_by_session(client, projection):
+def get_mongo_storage_by_session(client, *args, **kwargs):
     sessions = client.get_unique_sessions()
     if len(sessions) > 1:
         s_lut = sorted([{
@@ -58,21 +58,21 @@ def get_mongo_storage_by_session(client, projection):
             try:
                 char = raw_input("Please enter a number or enter for all: ")
                 if char is "":
-                    return client.find(projection=projection)
-                return client.find_by_session_id(s_lut[int(char)]["id"], projection=projection)
+                    return client.find(*args, **kwargs)
+                return client.find_by_session_id(s_lut[int(char)]["id"], *args, **kwargs)
             except (EOFError, ValueError, IndexError):
                 print("Please choose an appropriate option")
                 continue
-    return client.find(projection=projection)
+    return client.find(*args, **kwargs)
 
 
 def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, projection=None):
     print("Converting MongoDB '{}' to '{}'".format(mongodb_client.uri, topic_store_file.name))
 
     if query is None or not isinstance(query, dict):
-        storage = get_mongo_storage_by_session(mongodb_client, projection)
+        storage = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
-        storage = mongodb_client.find(query, projection)
+        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
 
     count = storage.cursor.count()
 
@@ -88,9 +88,9 @@ def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None)
     print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
     if query is None or not isinstance(query, dict):
-        storage = get_mongo_storage_by_session(mongodb_client, projection)
+        storage = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
-        storage = mongodb_client.find(query, projection)
+        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
 
     count = storage.cursor.count()
 
