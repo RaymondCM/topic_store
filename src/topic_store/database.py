@@ -153,7 +153,7 @@ class MongoStorage(Storage):
                 args[1]["_ts_meta"] = 1  # Force _ts_meta always if projection is an inclusion rule
             if "_ts_meta" in args[1] and args[1]["_ts_meta"] == 0:  # Don't allow the user to exclude _ts_meta
                 args[1].pop("_ts_meta")
-        if "projection" in kwargs:
+        if isinstance(kwargs, dict) and isinstance(kwargs.get("projection"), dict):
             if all(x == 1 for x in kwargs["projection"].values()):
                 kwargs["projection"]["_ts_meta"] = 1
             if "_ts_meta" in kwargs["projection"] and kwargs["projection"]["_ts_meta"] == 0:
