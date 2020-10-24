@@ -405,16 +405,23 @@ class TopicStore:
         return data_dict
 
     @staticmethod
-    def __ros_msg_dict_to_list(ros_msg_dict):
-        """Useful for getting all ROS messages as a list. Only messages with a _connection_header are returned."""
+    def __ros_msg_dict_to_list(ros_msg_dict, return_keys=False, parent=""):
+        """Useful for getting all ROS messages as flat list/dict. Only messages with _connection_header are returned."""
         if not isinstance(ros_msg_dict, dict):
             return
         for key, value in ros_msg_dict.items():
             if isinstance(value, ROSMessage):
-                yield value
-            for ret in TopicStore.__ros_msg_dict_to_list(value):
+                if return_keys:
+                    yield (parent + "." + key), value
+                else:
+                    yield value
+            for ret in TopicStore.__ros_msg_dict_to_list(value, return_keys, key if not parent else parent + "." + key):
                 yield ret
 
     def to_ros_msg_list(self):
         # TODO: Cache this operation until self.__data_tree updated
         return list(TopicStore.__ros_msg_dict_to_list(self.msgs))
+
+    def flatten_ros_msg_dict(self):
+        # TODO: Cache this operation until self.__data_tree updated
+        return {k: v for k, v in TopicStore.__ros_msg_dict_to_list(self.msgs, return_keys=True)}
