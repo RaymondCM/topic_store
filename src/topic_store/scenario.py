@@ -12,6 +12,7 @@ from threading import Event
 import pathlib
 import rospy
 import actionlib
+from std_msgs.msg import String
 
 from topic_store import get_package_root
 from topic_store.msg import CollectDataAction, CollectDataResult, \
@@ -33,6 +34,9 @@ class ScenarioRunner:
         # Load Scenario
         rospy.loginfo("Loading scenario: '{}'".format(scenario_file))
         self.scenario = ScenarioFileParser(scenario_file)
+
+        # Create publisher for topic_store scenario logs
+        self.log_publisher = rospy.Publisher("/topic_store/logs", String)
 
         # Create subscriber tree for getting all the data
         self.subscriber_tree = SubscriberTree(self.scenario.data)
@@ -62,6 +66,7 @@ class ScenarioRunner:
         self.collection_method_init_function()
 
     def log(self, message, **kwargs):
+        self.log_publisher.publish(String(message))
         if self.verbose:
             self.logger("\033[93mScenarioRunner\033[0m: {}".format(message), **kwargs)
 
