@@ -11,10 +11,10 @@ services:
   mongodb:
     container_name: ts_mongodb_server
     image: "mongo:4.2"
-#    ports:
-#      - ${MONGO_net_port}:${MONGO_net_port} # Bind the docker IP to the same local IP
-#    volumes:
-#      - ${TS_SCENARIO_storage_config}:${TS_SCENARIO_storage_config} # Config available in the docker
-#      - ${MONGO_local_storage_dbPath}:${MONGO_storage_dbPath} # Database folder mounted in the docker
+    ports:
+      - ${MONGO_net_port}:${MONGO_net_port} # Bind the docker IP to the same local IP
+    volumes:
+      - ${TS_SCENARIO_storage_config}:${TS_SCENARIO_storage_config} # Config available in the docker
+      - ${MONGO_local_storage_dbPath}:${MONGO_storage_dbPath} # Database folder mounted in the docker
     user: ${TS_UID_GID}
-#    command: --config "${TS_SCENARIO_storage_config}" --dbpath ${MONGO_storage_dbPath}
+    command: --config "${TS_SCENARIO_storage_config}" --dbpath ${MONGO_storage_dbPath}
