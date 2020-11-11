@@ -113,9 +113,11 @@ docker-compose down
 TS_UID_GID=1000:1000
 if [[ ! "$(id -u):$(id -g)" = "1000:1000" ]]; then
   echo -e "You're about to launch docker mongodb with user id ($(id -u)) group id ($(id -g))"
-  read -r -p "Would you like to continue (no will use .env default UID:GID 1000:1000)? [y/N] " response
-  if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-      TS_UID_GID=$(id -u):$(id -g)
+  if [ -z "$PS1" ]; then
+    read -r -p "Would you like to continue (no will use .env default UID:GID 1000:1000)? [y/N] " response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        TS_UID_GID=$(id -u):$(id -g)
+    fi
   fi
 fi
 export TS_UID_GID=$TS_UID_GID
