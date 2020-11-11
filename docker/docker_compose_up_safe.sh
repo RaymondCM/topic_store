@@ -110,4 +110,4 @@ trap cleanup INT TERM EXIT
 docker-compose down
 
 # Bring container up and block execution
-docker-compose up
+TS_UID_GID=$(id -u):$(id -g) docker-compose up
