@@ -8,7 +8,7 @@ ROS package used for serialising common ROS messages to a database or filesystem
 
 [![asciicast](https://asciinema.org/a/Cq9i3a41fzuULw52tRLkHvBQS.svg)](https://asciinema.org/a/Cq9i3a41fzuULw52tRLkHvBQS)
 
-Create a scenario file by following the documentation in [scenarios](./scenarios.md) or by following the example file
+Create a scenario file by following the documentation in [scenarios](https://github.com/RaymondKirk/topic_store/wiki/Scenarios) or by following the example file
 [default_config.yaml](../scenarios/default_config.yaml). The example below will save a history of all messages sent to the ros log topic.
 
 ```yaml
