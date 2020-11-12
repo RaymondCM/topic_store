@@ -119,7 +119,7 @@
   <customwidget>
    <class>ViewTree</class>
    <extends>QTreeWidget</extends>
-   <header>ts_widgets</header>
+   <header>ts_widgets.ViewTree</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -29,7 +29,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_scenario(self, *args):
         default_scenarios_dir = pathlib.Path(__file__).parent.parent.parent / "scenarios"
         file_name = str(QFileDialog.getOpenFileName(self, 'Open scenario file', str(default_scenarios_dir),
-                                                    "Scenario files (*.yaml)")[0])
+                                                    "Scenario files (*.yaml *.topic_store)")[0])
         if file_name:
             self.scenario_path.clear()
             self.scenario_path.append(file_name)
@@ -76,4 +76,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

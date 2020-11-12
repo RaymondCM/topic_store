@@ -1,5 +1,12 @@
-from PyQt5.QtWidgets import QTreeWidget, QMessageBox, QTreeWidgetItem
-from .registry import VISUALISER_REGISTRY, VisualiserWidget
+#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Email: ray.tunstill@gmail.com
+
+from __future__ import absolute_import, division, print_function
+
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem
+
+from .VisualiserBase import VisualiserBase
+from .registry import VISUALISER_REGISTRY
 
 
 class TypedQTreeWidgetItem(QTreeWidgetItem):
@@ -10,7 +17,7 @@ class TypedQTreeWidgetItem(QTreeWidgetItem):
 
 
 @VISUALISER_REGISTRY.register_visualiser((dict, list, tuple))
-class ViewTree(QTreeWidget, VisualiserWidget):
+class ViewTree(QTreeWidget, VisualiserBase):
     def __init__(self, *args):
         QTreeWidget.__init__(self, *args)
 

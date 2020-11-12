@@ -6,11 +6,6 @@ from __future__ import absolute_import, division, print_function
 from inspect import getargspec
 
 
-class VisualiserWidget:
-    def setup(self, data):
-        return self
-
-
 class __VisualiserRegistry:
     def __init__(self):
         self._modules = {}

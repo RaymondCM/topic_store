@@ -1,14 +1,20 @@
-from PyQt5 import QtWidgets, QtGui
+#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Email: ray.tunstill@gmail.com
+
+from __future__ import absolute_import, division, print_function
+
+from PyQt5 import QtGui
 
 import ros_numpy
-from PyQt5.QtWidgets import QTreeWidget, QMessageBox, QTreeWidgetItem, QLabel
+from PyQt5.QtWidgets import QLabel
 from sensor_msgs.msg import Image
 
-from .registry import VISUALISER_REGISTRY, VisualiserWidget
+from .VisualiserBase import VisualiserBase
+from .registry import VISUALISER_REGISTRY
 
 
 @VISUALISER_REGISTRY.register_visualiser(Image)
-class NPImage(QLabel, VisualiserWidget):
+class NPImage(QLabel, VisualiserBase):
     def __init__(self, *args):
         QLabel.__init__(self, *args)
 
@@ -21,5 +27,5 @@ class NPImage(QLabel, VisualiserWidget):
         self.itemClicked.connect(f)
 
     def show_image(self, image):
-        qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
+        qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888)
         self.setPixmap(QtGui.QPixmap.fromImage(qt_image))
