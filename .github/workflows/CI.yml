@@ -1,0 +1,23 @@
+name: Topic Store
+on: [push, pull_request, release]
+jobs:
+  ros_setup:
+    name: Topic Store Tests
+    runs-on: ubuntu-18.04 # host machine not container OS
+    strategy:
+      fail-fast: false
+      matrix:
+        ros_distro: [melodic] # @todo: add kinetic support later
+    steps:
+      - uses: actions/checkout@v2
+      - name: Select ROS version
+        run: sed -i -- "s/melodic/${{ matrix.ros_distro }}/g" ./docker/Dockerfile.ci
+      - name: setup ROS
+        run: docker-compose -f docker-compose-ci.yml build
+        timeout-minutes: 5
+      - name: setup Mongo database
+        run: docker-compose -f docker-compose-ci.yml up -d mongodb
+        timeout-minutes: 4
+      - name: Run Unit Tests
+        run: docker-compose -f docker-compose-ci.yml run --rm topic_store_test bash -c '. /catkin_ws/devel/setup.bash; rostest topic_store topic_store.test'
+        timeout-minutes: 3

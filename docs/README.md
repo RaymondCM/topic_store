@@ -1,6 +1,7 @@
 # Topic Store
 
 [![building](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/badge/icon)](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/lastBuild/)
+![CI](https://github.com/pet1330/topic_store/workflows/Topic%20Store/badge.svg?branch=gh-ci&event=push)
 
 ROS package used for serialising common ROS messages to a database or filesystem.
 
