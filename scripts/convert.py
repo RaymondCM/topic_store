@@ -57,7 +57,7 @@ def get_mongo_storage_by_session(client, *args, **kwargs):
         while True:
             try:
                 char = raw_input("Please enter a number or enter for all: ")
-                if char is "":
+                if char == "":
                     return client.find(*args, **kwargs)
                 return client.find_by_session_id(s_lut[int(char)]["id"], *args, **kwargs)
             except (EOFError, ValueError, IndexError):
