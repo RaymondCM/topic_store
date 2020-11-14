@@ -227,8 +227,8 @@ class TopicStore:
     @data_tree.setter
     def data_tree(self, value):
         # clears variable cache
-        del to_ros_msg_list
-        del flatten_ros_msg_dict
+        del self.to_ros_msg_list
+        del self.flatten_ros_msg_dict
         self.__data_tree = value
 
     @property
