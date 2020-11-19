@@ -10,14 +10,13 @@ jobs:
         ros_distro: [melodic] # @todo: add kinetic support later
     steps:
       - uses: actions/checkout@v2
-      - name: Select ROS version
+      - name: Setup ROS
         run: | # swap default config values for test values
           sed -i -- "s/65530/27017/" ./config/default_db_config.yaml
           sed -i -- "s/0.0.0.0/mongodb/" ./config/default_db_config.yaml
-      - name: setup ROS
-        run: docker-compose -f docker-compose-ci.yml build
+          docker-compose -f docker-compose-ci.yml build
         timeout-minutes: 5
-      - name: setup Mongo database
+      - name: Setup Mongo database
         run: docker-compose -f docker-compose-ci.yml up -d mongodb
         timeout-minutes: 3
       - name: Run Unit Tests
