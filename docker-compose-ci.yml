@@ -1,0 +1,18 @@
+version: "3.3"
+
+services:
+
+  topic_store_test:
+    build:
+      context: ./
+      dockerfile: ./docker/Dockerfile.ci
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: 'mongo:4.2'
+    command: 'mongod --storageEngine=wiredTiger'
+    expose:
+      - '27017'
