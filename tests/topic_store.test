@@ -1,4 +1,8 @@
 <launch>
+    <group if="$(optenv JENKINS_HOME 0)">
+        <env name="TOPIC_STORE_LOCAL_DB" value="YES"/>
+    </group>
+
     <param name="test_module" value="topic_store"/>
     <test test-name="test_topic_store" pkg="topic_store" type="pytest_runner.py"/>
 </launch>
