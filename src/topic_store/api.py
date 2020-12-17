@@ -5,18 +5,9 @@
 
 import pathlib
 from abc import ABCMeta, abstractmethod, abstractproperty
+from .utils import abstractstatic
 
 __all__ = ["load", "Storage"]
-
-
-class abstract_static(staticmethod):
-    __slots__ = ()
-
-    def __init__(self, function):
-        super(abstract_static, self).__init__(function)
-        function.__isabstractmethod__ = True
-
-    __isabstractmethod__ = True
 
 
 class Storage:
@@ -26,7 +17,7 @@ class Storage:
     def suffix(self):
         raise NotImplementedError
 
-    @abstract_static
+    @abstractstatic
     def load(path):
         """Storage containers must have a load mechanism"""''
         raise NotImplementedError

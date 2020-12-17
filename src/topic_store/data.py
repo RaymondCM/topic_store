@@ -12,6 +12,7 @@ import genpy
 import roslib.message
 import rospy
 from genpy import Message as ROSMessage
+from .utils import cached_property
 
 try:
     from collections import Mapping as MappingType
@@ -211,17 +212,28 @@ class TopicStore:
         if not isinstance(data_tree, dict):
             raise ValueError("Data tree must be a dict to construct a TopicStore")
         # Ensure passed data tree does not contain ROS msgs
-        self.__data_tree = DefaultTypeParser()(data_tree)
-        if "_id" not in self.__data_tree:
-            self.__data_tree["_id"] = bson.ObjectId()
-        if "_ts_meta" not in self.__data_tree:
-            self.__data_tree["_ts_meta"] = dict(session=_session_id, sys_time=time_as_ms(), ros_time=ros_time_as_ms())
+        self.data_tree = DefaultTypeParser()(data_tree)
+        if "_id" not in self.data_tree:
+            self.data_tree["_id"] = bson.ObjectId()
+        if "_ts_meta" not in self.data_tree:
+            self.data_tree["_ts_meta"] = dict(session=_session_id, sys_time=time_as_ms(), ros_time=ros_time_as_ms())
         # Cache for dict to ROS message parsing
         self.__msgs = None
 
     @property
-    def dict(self):
+    def data_tree(self):
         return self.__data_tree
+
+    @data_tree.setter
+    def data_tree(self, value):
+        # clears variable cache
+        del self.to_ros_msg_list
+        del self.flatten_ros_msg_dict
+        self.__data_tree = value
+
+    @property
+    def dict(self):
+        return self.data_tree
 
     @property
     def msgs(self):
@@ -418,10 +430,10 @@ class TopicStore:
             for ret in TopicStore.__ros_msg_dict_to_list(value, return_keys, key if not parent else parent + "." + key):
                 yield ret
 
+    @cached_property
     def to_ros_msg_list(self):
-        # TODO: Cache this operation until self.__data_tree updated
         return list(TopicStore.__ros_msg_dict_to_list(self.msgs))
 
+    @cached_property
     def flatten_ros_msg_dict(self):
-        # TODO: Cache this operation until self.__data_tree updated
         return {k: v for k, v in TopicStore.__ros_msg_dict_to_list(self.msgs, return_keys=True)}
