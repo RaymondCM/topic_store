@@ -2,6 +2,7 @@
 
 [![building](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/badge/icon)](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/lastBuild/)
 ![CI](https://github.com/RaymondKirk/topic_store/workflows/Topic%20Store/badge.svg?branch=master)
+![PyPi](http://badge.fury.io/py/topic-store.svg)
 
 ROS package used for serialising common ROS messages to a database or filesystem.
 
@@ -28,7 +29,7 @@ cd topic_store/src
 pip install --extra-index-url https://rospypi.github.io/simple/ -e .
 
 # From PyPi
-pip install topic_store
+pip install topic-store
 ```
 
 To install other dependencies i.e. `ros_numpy` you can run the following
