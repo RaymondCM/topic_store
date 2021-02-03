@@ -49,13 +49,16 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 The below example shows how to load and use files stored in a database. 
 
 ```python
-from topic_store import load
+import topic_store as ts
 
-storage = load("/path/to/scenario/file/containing/db/connection/info.yaml")
-
+# Read data
+storage = ts.load("/path/to/scenario/file/containing/db/connection/info.yaml")
 for item in storage:
     print("As Python Dict", item.dict)  # or item["key"]
     print("As ROS Msgs", item.msgs)  # or item("key")
+
+# Write data
+storage.insert_one({"important_data": "topic store is great!"})
 ```
 
 ## Filesystem data
@@ -64,13 +67,16 @@ The below example shows how to load and use `.topic_store` files, saved from whe
 `storage_method="filesystem"` option.
 
 ```python
-from topic_store import load
+import topic_store as ts
 
-storage = load("/path/to/file.topic_store")
-
+# Read data
+storage = ts.load("/path/to/file.topic_store")
 for item in storage:
     print("As Python Dict", item.dict)  # or item["key"]
     print("As ROS Msgs", item.msgs)  # or item("key")
+
+# Write data
+storage.insert_one({"important_data": "topic store is great!"})
 ```
 
 ## Launch a database
