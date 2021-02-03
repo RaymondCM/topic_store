@@ -44,6 +44,9 @@ if __name__ == '__main__':
             "Programming Language :: Python :: 2",
             "Programming Language :: Python :: 3",
         ],
+        entry_points={
+            'console_scripts': ['topic-store-convert=topic_store.convert:_convert_cli'],
+        },
         setup_requires=['wheel', "Cython"],
         install_requires=requirements,
         dependency_links=["https://rospypi.github.io/simple/"],  # deprecated: use pip install --extra-index-url
