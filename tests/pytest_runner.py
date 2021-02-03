@@ -5,6 +5,7 @@ import os
 import sys
 import rospy
 import pytest
+from pymongo import MongoClient
 
 
 def get_output_file():
@@ -14,8 +15,13 @@ def get_output_file():
 
     raise RuntimeError('No output file has been passed')
 
+def test_db_connection():
+    client = MongoClient(host=['mongodb:27017'])
+    result = client.admin.command('ping')
+    return result['ok']
 
 if __name__ == '__main__':
+    assert test_db_connection() == 1.0, "Unable to connect to monogo database"
     output_file = get_output_file()
     test_module = rospy.get_param('test_module')
     runner_path = os.path.dirname(os.path.realpath(__file__))
