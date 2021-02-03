@@ -5,6 +5,38 @@
 
 ROS package used for serialising common ROS messages to a database or filesystem.
 
+# Installation
+### ROS 
+
+```bash
+# From source
+cd catkin_ws/src
+git clone https://github.com/RaymondKirk/topic_store 
+catkin build topic_store
+
+# From apt
+sudo apt install ros-melodic-topic-store  # you need to add the L-CAS ros source
+```
+### Installing without ROS
+
+You can install topic_store as an independent python2/3 package without a working ROS installation. 
+
+```bash
+# From source 
+git clone https://github.com/RaymondKirk/topic_store
+cd topic_store/src
+pip install --extra-index-url https://rospypi.github.io/simple/ -e .
+
+# From PyPi
+pip install topic_store
+```
+
+To install other dependencies i.e. `ros_numpy` you can run the following
+
+```bash
+pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy sensor_msgs geometry_msgs nav_msgs                                                       130 python3-library!+?
+```
+
 # Usage
 
 [![asciicast](https://asciinema.org/a/Cq9i3a41fzuULw52tRLkHvBQS.svg)](https://asciinema.org/a/Cq9i3a41fzuULw52tRLkHvBQS)
