@@ -18,6 +18,11 @@ try:
 except ImportError:
     from collections.abc import Mapping as MappingType
 
+try:
+    unicode
+except NameError:  # python3 so use unicode=str
+    unicode = str
+
 __all__ = ["TopicStore", "MongoDBParser", "DefaultTypeParser", "GenericPyROSMessage", "MongoDBReverseParser"]
 
 _session_id = bson.ObjectId()
@@ -31,7 +36,12 @@ def time_as_ms(timestamp=None):
 
 def ros_time_as_ms(timestamp=None):
     if timestamp is None:
-        timestamp = rospy.Time.now()
+        try:
+            timestamp = rospy.Time.now()
+        except rospy.exceptions.ROSInitException:
+            import warnings
+            warnings.warn("Warning can't set ros time (node not initialised ROSInitException) so using system time.")
+            return time_as_ms()
     return timestamp.to_sec()
 
 
@@ -121,11 +131,15 @@ class MongoDBParser(DefaultTypeParser):
     def bytes_to_bson_if_not_unicode(s):
         # If it's a utf-8 string then keep as string, otherwise convert to BSON
         # In python 2.7 bytes and str are equivalent so this is needed for np.arrays and ros arrays
+        is_binary_string = False
         try:
-            s.decode('utf-8')
+            s.decode('utf-8')  # if decoded to utf-8 then return else convert to binary
+        except AttributeError:  # in python 3 string are utf-8 by default so if you get attribute error it will be str
+            is_binary_string = False
         except UnicodeError:
-            s = bson.binary.Binary(s)
-        return s
+            is_binary_string = True
+
+        return bson.binary.Binary(s) if is_binary_string else s
 
 
 class MongoDBReverseParser(DefaultTypeParser):
@@ -362,7 +376,7 @@ class TopicStore:
             parents = []
 
         if isinstance(d, dict):
-            for k, v in d.iteritems():
+            for k, v in d.items():
                 if isinstance(v, dict):
                     r.extend(TopicStore.__extract_nested_dict_keys(v, parents + [k]))
                 elif isinstance(v, list):
