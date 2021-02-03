@@ -29,7 +29,7 @@ cd topic_store/src
 pip install --extra-index-url https://rospypi.github.io/simple/ -e .
 
 # From PyPi
-pip install topic-store
+pip install --extra-index-url https://rospypi.github.io/simple/ topic-store
 ```
 
 To install other dependencies i.e. `ros_numpy` you can run the following
