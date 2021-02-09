@@ -6,6 +6,8 @@
 from __future__ import absolute_import, division, print_function
 
 import pickle
+import sys
+
 import pathlib
 
 from topic_store.api import Storage
@@ -33,6 +35,8 @@ class TopicStorage(Storage):
         return TopicStorage(path)
 
     def insert_one(self, topic_store):
+        if isinstance(topic_store, dict):
+            topic_store = TopicStore(topic_store)
         if not isinstance(topic_store, TopicStore):
             raise ValueError("TopicStorage only supports TopicStore types")
         # Create if doesn't exist on the system
@@ -51,7 +55,10 @@ class TopicStorage(Storage):
         with self.path.open("rb") as fh:
             while True:
                 try:
-                    yield TopicStore(data_tree=pickle.load(fh))
+                    load_kwargs = {}
+                    if sys.version_info[0] >= 3:  # python3 loading
+                        load_kwargs = dict(encoding="latin1")
+                    yield TopicStore(data_tree=pickle.load(fh, **load_kwargs))
                 except EOFError:
                     break
 

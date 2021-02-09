@@ -2,8 +2,41 @@
 
 [![building](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/badge/icon)](https://lcas.lincoln.ac.uk/buildfarm/job/Mdev__topic_store__ubuntu_bionic_amd64/lastBuild/)
 ![CI](https://github.com/RaymondKirk/topic_store/workflows/Topic%20Store/badge.svg?branch=master)
+[![PyPi](http://badge.fury.io/py/topic-store.svg)](https://pypi.org/project/topic-store/)
 
 ROS package used for serialising common ROS messages to a database or filesystem.
+
+# Installation
+### ROS 
+
+```bash
+# From source
+cd catkin_ws/src
+git clone https://github.com/RaymondKirk/topic_store 
+catkin build topic_store
+
+# From apt
+sudo apt install ros-melodic-topic-store  # you need to add the L-CAS ros source
+```
+### Installing without ROS
+
+You can install topic_store as an independent python2/3 package without a working ROS installation. 
+
+```bash
+# From source 
+git clone https://github.com/RaymondKirk/topic_store
+cd topic_store/src
+pip install --extra-index-url https://rospypi.github.io/simple/ -e .
+
+# From PyPi
+pip install --extra-index-url https://rospypi.github.io/simple/ topic-store
+```
+
+To install other dependencies i.e. `ros_numpy` you can run the following
+
+```bash
+pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy sensor_msgs geometry_msgs nav_msgs                                                       130 python3-library!+?
+```
 
 # Usage
 
@@ -49,13 +82,16 @@ roslaunch topic_store run_scenario.launch scenario_file:="/path/to/your/scenario
 The below example shows how to load and use files stored in a database. 
 
 ```python
-from topic_store import load
+import topic_store as ts
 
-storage = load("/path/to/scenario/file/containing/db/connection/info.yaml")
-
+# Read data
+storage = ts.load("/path/to/scenario/file/containing/db/connection/info.yaml")
 for item in storage:
     print("As Python Dict", item.dict)  # or item["key"]
     print("As ROS Msgs", item.msgs)  # or item("key")
+
+# Write data
+storage.insert_one({"important_data": "topic store is great!"})
 ```
 
 ## Filesystem data
@@ -64,13 +100,16 @@ The below example shows how to load and use `.topic_store` files, saved from whe
 `storage_method="filesystem"` option.
 
 ```python
-from topic_store import load
+import topic_store as ts
 
-storage = load("/path/to/file.topic_store")
-
+# Read data
+storage = ts.load("/path/to/file.topic_store")
 for item in storage:
     print("As Python Dict", item.dict)  # or item["key"]
     print("As ROS Msgs", item.msgs)  # or item("key")
+
+# Write data
+storage.insert_one({"important_data": "topic store is great!"})
 ```
 
 ## Launch a database

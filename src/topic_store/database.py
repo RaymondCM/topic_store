@@ -86,7 +86,7 @@ class MongoStorage(Storage):
     def __apply_fn_to_nested_dict(self, original_dict, iter_dict=None, fn=None):
         if iter_dict is None:
             iter_dict = copy(original_dict)
-        for k, v in iter_dict.iteritems():
+        for k, v in iter_dict.items():
             if isinstance(v, MappingType):
                 original_dict[k] = self.__apply_fn_to_nested_dict(original_dict.get(k, {}), v, fn)
             else:
@@ -127,6 +127,8 @@ class MongoStorage(Storage):
         Returns:
             pymongo.results.InsertOneResult: Contains the ID for the inserted document
         """
+        if isinstance(topic_store, dict):
+            topic_store = TopicStore(topic_store)
         if not isinstance(topic_store, TopicStore):
             raise ValueError("Can only insert TopicStore items into the database not '{}'".format(type(topic_store)))
 

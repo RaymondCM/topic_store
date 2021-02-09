@@ -61,7 +61,9 @@ class ScenarioFileParser:
                 raise Exception("Storage field in YAML file must have the parameter '{}' when method=='{}'".format(
                     required_parameter, self.storage["method"]
                 ))
-        for parameter in self.storage.keys():  # Delete parameters that won't be used
+        # TODO: This errors if using a filesystem config for db scenario or visa-versa
+        all_storage_keys = self.storage.keys()
+        for parameter in all_storage_keys:  # Delete parameters that won't be used
             if parameter not in self.__field_meta["storage"][self.storage["method"]]:
                 del self.storage[parameter]
 
