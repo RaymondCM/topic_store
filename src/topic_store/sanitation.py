@@ -142,7 +142,7 @@ class MongoDBReverseParser(DefaultTypeParser):
 class ROSItemsView(ItemsView):
     def __init__(self, *args, **kwargs):
         super(ROSItemsView, self).__init__(*args, **kwargs)
-        if not isinstance(self._mapping, genpy.Message):
+        if not isinstance(self._mapping, (genpy.Message, genpy.Time, genpy.Duration)):
             raise ValueError("Only genpy.Message types can be used with ROSItemsView")
 
         # Attempt to extract the message type for bi-directional conversion
@@ -205,7 +205,7 @@ def default_exit_fn(path, key, old_parent, new_parent, new_items):
 
 
 def enter_fn_ros_to_dict(path, key, value):
-    if isinstance(value, genpy.Message):
+    if isinstance(value, (genpy.Message, genpy.Time, genpy.Duration)):
         # genpy.Message return empty class shell as dict and ROSItemsView (slot, len and iterable support)
         return value.__class__(), ROSItemsView(value)
     else:
@@ -213,7 +213,7 @@ def enter_fn_ros_to_dict(path, key, value):
 
 
 def exit_fn_ros_to_dict(path, key, old_parent, new_parent, new_items):
-    if isinstance(new_parent, genpy.Message):
+    if isinstance(new_parent, (genpy.Message, genpy.Time, genpy.Duration)):
         # New parent is dict of genpy.Message slots (new_items from ROSItemsView)
         return dict(new_items)
     else:
@@ -239,7 +239,7 @@ def enter_fn_dict_to_ros(path, key, value):
 
 
 def exit_fn_dict_to_ros(path, key, old_parent, new_parent, new_items):
-    if isinstance(new_parent, genpy.Message):
+    if isinstance(new_parent, (genpy.Message, genpy.Time, genpy.Duration)):
         # New parent is dict of genpy.Message slots (new_items from ROSItemsView)
         for attribute_key, attribute_value in new_items:  # or cls = msg_class(**v) after removing ros meta etc
             try:
