@@ -3,22 +3,25 @@
 #  Raymond Kirk (Tunstill) Copyright (c) 2020
 #  Email: ray.tunstill@gmail.com
 
+# Script to run and collect data from a scenario.yaml file.
+
+
 from __future__ import absolute_import, division, print_function
 
 import datetime
 import os
-import rospkg
+
 from threading import Event
 import pathlib
 import rospy
 import actionlib
 from std_msgs.msg import String
 
-from topic_store import get_package_root
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
 from topic_store.file_parsers import ScenarioFileParser
+from topic_store.load_balancer import LoadBalancer, FPSCounter
 
 
 class ScenarioRunner:
@@ -63,6 +66,8 @@ class ScenarioRunner:
         if not callable(self.collection_method_init_function):
             raise Exception("Invalid way point value ('{}()' does not exist)".format(collection_method_init_name))
 
+        self.jobs_worker = LoadBalancer(maxsize=200, threads=4)
+        self.save_callback_rate = FPSCounter(self.jobs_worker.maxsize)
         self.collection_method_init_function()
 
     def log(self, message, **kwargs):
@@ -72,7 +77,10 @@ class ScenarioRunner:
 
     def init_way_point_action_server(self):
         def __request(goal_msg):
-            success, save_msg = self.save()
+            success, save_msg = True, "Success!"
+            # TODO: self.save() no longer returns values of self.__save() because jobs are handled in a load_balancer
+            # TODO: for now action_server will return success no matter what
+            self.save()
             result = CollectDataResult(success)
             feedback = CollectDataFeedback(save_msg)
             self.service_server.publish_feedback(feedback)
@@ -169,20 +177,39 @@ class ScenarioRunner:
 
     def save_database(self, message_tree):
         insert_result = self.db_client.insert_one(message_tree)
-        self.log("Inserted document to database result='acknowledged={}, inserted_id={}'".format(
-            insert_result.acknowledged, insert_result.inserted_id))
+        self.saved_n += 1
+        # self.log("Inserted document to database result='acknowledged={}, inserted_id={}'".format(
+        #     insert_result.acknowledged, insert_result.inserted_id))
+        return insert_result.inserted_id
 
     def save_filesystem(self, message_tree):
-        self.log("Saving documents to file system n={}".format(self.saved_n))
+        # self.log("Saving documents to file system n={}".format(self.saved_n))
         self.saved_n += 1
         self.filesystem_storage.insert_one(message_tree)
+        return self.saved_n
 
-    def save(self):
-        """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""
-        data = self.subscriber_tree.get_message_tree()
+    def __save(self, data, job_meta=None, **kwargs):
         try:
-            self.save_method_function(data)
+            saved_data_id = self.save_method_function(data)
         except Exception as e:
             self.log("Exception raised when saving! '{}'".format(e.message))
             return False, e.message
+        if job_meta is not None:
+            worker_id = job_meta.pop("worker_id", None)
+            data_retrieval_rate = job_meta.pop("worker_data_retrieval_rate", None)
+            job_processing_rate = job_meta.pop("worker_job_processing_rate", None)
+            self.log("Worker {} successfully saved data id='{}', data_retrieval_rate='{:.2f}', job_processing_rate="
+                     "'{:.2f}', save_callback_rate='{:.2f}'".format(worker_id, saved_data_id, data_retrieval_rate,
+                                                                    job_processing_rate,
+                                                                    self.save_callback_rate.get_fps()))
         return True, "Success!"
+
+    def save(self):
+        """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""
+        self.save_callback_rate.toc()
+        self.save_callback_rate.tic()
+        args, kwargs = [self.subscriber_tree.get_message_tree()], {}
+        added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
+        if not added_task:
+            self.log("IO Queue Full, cannot add jobs to the queue, please wait.")
+            self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
