@@ -15,13 +15,13 @@ from threading import Event
 import pathlib
 import rospy
 import actionlib
-from std_msgs.msg import String
 
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
 from topic_store.file_parsers import ScenarioFileParser
 from topic_store.load_balancer import LoadBalancer, FPSCounter
+from topic_store.utils import best_logger, DefaultLogger
 
 
 class ScenarioRunner:
@@ -31,7 +31,6 @@ class ScenarioRunner:
         self.scenario_file = scenario_file
         self.stabilise_time = stabilise_time
         self.verbose = verbose
-        self.logger = print
         self.events = {}
 
         # Load Scenario
@@ -39,12 +38,13 @@ class ScenarioRunner:
         self.scenario = ScenarioFileParser(scenario_file)
 
         # Create publisher for topic_store scenario logs
-        self.log_publisher = rospy.Publisher("/topic_store/logs", String, queue_size=1)
+        self.logger = best_logger(verbose=verbose)
+        self.info_logger = DefaultLogger(verbose=verbose)
 
         # Create subscriber tree for getting all the data
         self.subscriber_tree = SubscriberTree(self.scenario.data)
         if self.stabilise_time:
-            self.log("Waiting for {}s before starting (stabilise_time)".format(self.stabilise_time), verbose=True)
+            self.info_logger("Waiting for {}s before starting (stabilise_time)".format(self.stabilise_time))
             rospy.sleep(self.stabilise_time)
 
         # Choose appropriate methods
@@ -70,12 +70,6 @@ class ScenarioRunner:
         self.save_callback_rate = FPSCounter(self.jobs_worker.maxsize)
         self.collection_method_init_function()
 
-    def log(self, message, **kwargs):
-        self.log_publisher.publish(String(message))
-        verbose = kwargs.pop("verbose", False) or self.verbose
-        if verbose:
-            self.logger("\033[93mScenarioRunner\033[0m: {}".format(message), **kwargs)
-
     def init_way_point_action_server(self):
         def __request(goal_msg):
             success, save_msg = True, "Success!"
@@ -88,7 +82,7 @@ class ScenarioRunner:
             (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
 
         action_lib_server_name = self.scenario.collection["action_server_name"]
-        self.log("Starting '{}' actionlib server".format(action_lib_server_name), verbose=True)
+        self.info_logger("Starting '{}' actionlib server".format(action_lib_server_name))
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
@@ -102,7 +96,7 @@ class ScenarioRunner:
         def __request(goal_msg):
             should_start = str(goal_msg.message).lower() in ["true", "t", "start"]
             starting_string = "Starting" if should_start else "Stopping"
-            self.log("{} data collection from '{}'".format(starting_string, action_lib_server_name))
+            self.info_logger("{} data collection from '{}'".format(starting_string, action_lib_server_name))
             self.set_event_msg_callback(should_start, event_name)
 
             result = CollectDataResult(should_start)
@@ -111,7 +105,7 @@ class ScenarioRunner:
             self.service_server.set_succeeded(result)
 
         action_lib_server_name = self.scenario.collection["action_server_name"]
-        self.log("Starting '{}' actionlib server".format(action_lib_server_name), verbose=True)
+        self.info_logger("Starting '{}' actionlib server".format(action_lib_server_name))
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
@@ -122,7 +116,7 @@ class ScenarioRunner:
             self.events[topic_to_watch]["event"].clear()
             if self.events[event_name]["data"]:
                 self.save()
-                self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
+                # self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def set_event_msg_callback(self, data, event_id):
         if event_id in self.events:
@@ -133,7 +127,7 @@ class ScenarioRunner:
         delay = self.scenario.collection["timer_delay"]
         while not rospy.is_shutdown():
             self.save()
-            self.log("Waiting for {}s before next data cycle".format(delay))
+            # self.log("Waiting for {}s before next data cycle".format(delay))
             rospy.sleep(delay)
 
     def init_way_point_event(self):
@@ -145,14 +139,14 @@ class ScenarioRunner:
             self.events[event_name]["event"].wait()
             self.events[event_name]["event"].clear()
             self.save()
-            self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
+            # self.log("Waiting for event on '{}' topic before next data cycle".format(topic_to_watch))
 
     def init_save_database(self):
         from topic_store.database import MongoStorage
         self.db_client = MongoStorage(config=self.scenario.storage["config"], collection=self.scenario.context)
-        self.log("Initialised saving to database {} @ '{}/{}'".format(self.db_client.uri,
-                                                                      self.db_client.name, self.scenario.context),
-                 verbose=True)
+        self.info_logger("Initialised saving to database {} @ '{}/{}'".format(self.db_client.uri,
+                                                                              self.db_client.name,
+                                                                              self.scenario.context))
 
     def init_save_filesystem(self):
         from topic_store.filesystem import TopicStorage
@@ -166,7 +160,7 @@ class ScenarioRunner:
         else:
             save_location = pathlib.Path(os.path.expanduser(save_location))
         save_folder = save_location / self.scenario.context
-        self.log("Configured save_location as '{}'".format(save_folder), verbose=True)
+        self.info_logger("Configured save_location as '{}'".format(save_folder))
         try:
             save_folder.mkdir(parents=True)
         except OSError as e:
@@ -175,7 +169,7 @@ class ScenarioRunner:
 
         save_file = save_folder / "{}{}".format(formatted_datetime, TopicStorage.suffix)
         self.filesystem_storage = TopicStorage(save_file)
-        self.log("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path), verbose=True)
+        self.info_logger("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path))
 
     def save_database(self, message_tree):
         insert_result = self.db_client.insert_one(message_tree)
@@ -194,16 +188,14 @@ class ScenarioRunner:
         try:
             saved_data_id = self.save_method_function(data)
         except Exception as e:
-            self.log("Exception raised when saving! '{}'".format(e.message), verbose=True)
+            self.info_logger("Exception raised when saving! '{}'".format(e.message))
             return False, e.message
         if job_meta is not None:
             worker_id = job_meta.pop("worker_id", None)
-            data_retrieval_rate = job_meta.pop("worker_data_retrieval_rate", None)
-            job_processing_rate = job_meta.pop("worker_job_processing_rate", None)
-            self.log("Worker {} successfully saved data id='{}', data_retrieval_rate='{:.2f}', job_processing_rate="
-                     "'{:.2f}', save_callback_rate='{:.2f}'".format(worker_id, saved_data_id, data_retrieval_rate,
-                                                                    job_processing_rate,
-                                                                    self.save_callback_rate.get_fps()))
+            # Pretty print some variables
+            info_str = {k.replace("worker_", ""): "{:.2f}".format(v) for k, v in job_meta.items()}
+            info_str["save_callback_rate"] = "{:.2f}".format(self.save_callback_rate.get_fps())
+            self.logger("Worker {} successfully saved data id='{}'".format(worker_id, saved_data_id), **info_str)
         return True, "Success!"
 
     def save(self):
@@ -213,5 +205,5 @@ class ScenarioRunner:
         args, kwargs = [self.subscriber_tree.get_message_tree()], {}
         added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
         if not added_task:
-            self.log("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
+            self.logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
             self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
