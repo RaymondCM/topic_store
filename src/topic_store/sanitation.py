@@ -140,8 +140,8 @@ class MongoDBReverseParser(DefaultTypeParser):
 
 
 class ROSItemsView(ItemsView):
-    def __init__(self, *args, **kwargs):
-        super(ROSItemsView, self).__init__(*args, **kwargs)
+    def __init__(self, mapping, *args, **kwargs):
+        super(ROSItemsView, self).__init__(mapping, *args, **kwargs)
         if not isinstance(self._mapping, (genpy.Message, genpy.Time, genpy.Duration)):
             raise ValueError("Only genpy.Message types can be used with ROSItemsView")
 
@@ -155,6 +155,7 @@ class ROSItemsView(ItemsView):
 
         # If data is a ROS message then it has to be serialised to python
         self.slots = [k for k in self._mapping.__slots__]
+        self.connection_header = getattr(self._mapping, "_connection_header", None)
 
     def __len__(self):
         return len(self.slots)
@@ -170,8 +171,8 @@ class ROSItemsView(ItemsView):
         # Finally return a time stamped ros meta message to allow conversion back to a message type
         yield "_ros_meta", {'time': ros_time_as_ms(), 'type': self.msg_type}
         # Preserve connection header for ROSBag conversion support
-        if hasattr(self._mapping, "_connection_header"):
-            yield "_connection_header", getattr(self._mapping, "_connection_header")
+        if self.connection_header:
+            yield "_connection_header", self.connection_header
 
 
 def default_enter_fn(path, key, value):
@@ -232,7 +233,7 @@ def enter_fn_dict_to_ros(path, key, value):
             if not cls_type:
                 raise rospy.ROSException("Cannot load message class for [{}].  Please ensure the relevant package "
                                          "is installed on your system.".format(msg_type))
-        del value["_ros_meta"]
+        # del value["_ros_meta"]
         return cls_type(), ItemsView(value)
     else:
         return default_enter_fn(path, key, value)
@@ -242,12 +243,15 @@ def exit_fn_dict_to_ros(path, key, old_parent, new_parent, new_items):
     if isinstance(new_parent, (genpy.Message, genpy.Time, genpy.Duration)):
         # New parent is dict of genpy.Message slots (new_items from ROSItemsView)
         for attribute_key, attribute_value in new_items:  # or cls = msg_class(**v) after removing ros meta etc
+            if attribute_key == "_ros_meta":
+                continue
             try:
                 setattr(new_parent, attribute_key, attribute_value)
             except KeyError as e:
                 # Here we accept that if the message type has changed that we cannot necessarily fill all slots
                 rospy.logwarn("Could not set slot '{}' for class '{}' maybe the message definitions are "
                               "incompatible".format(attribute_key, new_parent))
+        return new_parent
     else:
         return default_exit_fn(path, key, old_parent, new_parent, new_items)
 

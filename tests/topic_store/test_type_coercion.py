@@ -7,7 +7,7 @@ from datetime import datetime
 import bson
 import rospy
 
-from topic_store.data import DefaultTypeParser, MongoDBParser
+from topic_store.sanitation import DefaultTypeParser, MongoDBParser
 
 
 class TestCoercion:
