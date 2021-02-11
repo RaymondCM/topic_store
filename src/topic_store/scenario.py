@@ -39,12 +39,12 @@ class ScenarioRunner:
         self.scenario = ScenarioFileParser(scenario_file)
 
         # Create publisher for topic_store scenario logs
-        self.log_publisher = rospy.Publisher("/topic_store/logs", String)
+        self.log_publisher = rospy.Publisher("/topic_store/logs", String, queue_size=1)
 
         # Create subscriber tree for getting all the data
         self.subscriber_tree = SubscriberTree(self.scenario.data)
         if self.stabilise_time:
-            self.log("Waiting for {}s before starting (stabilise_time)".format(self.stabilise_time))
+            self.log("Waiting for {}s before starting (stabilise_time)".format(self.stabilise_time), verbose=True)
             rospy.sleep(self.stabilise_time)
 
         # Choose appropriate methods
@@ -72,7 +72,8 @@ class ScenarioRunner:
 
     def log(self, message, **kwargs):
         self.log_publisher.publish(String(message))
-        if self.verbose:
+        verbose = kwargs.pop("verbose", False) or self.verbose
+        if verbose:
             self.logger("\033[93mScenarioRunner\033[0m: {}".format(message), **kwargs)
 
     def init_way_point_action_server(self):
@@ -87,7 +88,7 @@ class ScenarioRunner:
             (self.service_server.set_succeeded if success else self.service_server.set_aborted)(result)
 
         action_lib_server_name = self.scenario.collection["action_server_name"]
-        self.log("Starting '{}' actionlib server".format(action_lib_server_name))
+        self.log("Starting '{}' actionlib server".format(action_lib_server_name), verbose=True)
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
@@ -110,7 +111,7 @@ class ScenarioRunner:
             self.service_server.set_succeeded(result)
 
         action_lib_server_name = self.scenario.collection["action_server_name"]
-        self.log("Starting '{}' actionlib server".format(action_lib_server_name))
+        self.log("Starting '{}' actionlib server".format(action_lib_server_name), verbose=True)
         self.service_server = actionlib.SimpleActionServer(action_lib_server_name, CollectDataAction, __request, False)
         self.service_server.start()
 
@@ -150,7 +151,8 @@ class ScenarioRunner:
         from topic_store.database import MongoStorage
         self.db_client = MongoStorage(config=self.scenario.storage["config"], collection=self.scenario.context)
         self.log("Initialised saving to database {} @ '{}/{}'".format(self.db_client.uri,
-                                                                      self.db_client.name, self.scenario.context))
+                                                                      self.db_client.name, self.scenario.context),
+                 verbose=True)
 
     def init_save_filesystem(self):
         from topic_store.filesystem import TopicStorage
@@ -164,7 +166,7 @@ class ScenarioRunner:
         else:
             save_location = pathlib.Path(os.path.expanduser(save_location))
         save_folder = save_location / self.scenario.context
-        self.log("Configured save_location as '{}'".format(save_folder))
+        self.log("Configured save_location as '{}'".format(save_folder), verbose=True)
         try:
             save_folder.mkdir(parents=True)
         except OSError as e:
@@ -173,7 +175,7 @@ class ScenarioRunner:
 
         save_file = save_folder / "{}{}".format(formatted_datetime, TopicStorage.suffix)
         self.filesystem_storage = TopicStorage(save_file)
-        self.log("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path))
+        self.log("Initialised saving to the filesystem at '{}'".format(self.filesystem_storage.path), verbose=True)
 
     def save_database(self, message_tree):
         insert_result = self.db_client.insert_one(message_tree)
@@ -192,7 +194,7 @@ class ScenarioRunner:
         try:
             saved_data_id = self.save_method_function(data)
         except Exception as e:
-            self.log("Exception raised when saving! '{}'".format(e.message))
+            self.log("Exception raised when saving! '{}'".format(e.message), verbose=True)
             return False, e.message
         if job_meta is not None:
             worker_id = job_meta.pop("worker_id", None)
@@ -211,5 +213,5 @@ class ScenarioRunner:
         args, kwargs = [self.subscriber_tree.get_message_tree()], {}
         added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
         if not added_task:
-            self.log("IO Queue Full, cannot add jobs to the queue, please wait.")
+            self.log("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
             self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)

@@ -4,6 +4,7 @@
     <!-- =========================================================================================================== -->
     <!-- Global Settings For All Nodes -->
     <arg name="scenario_file" default="$(find topic_store)/scenarios/default_config.yaml"/>
+    <arg name="verbose" default="true"/>
 
     <!-- The IP of the rosbridge server for using the package with remote robots/systems -->
     <arg name="rosbridge_ip" default="$(optenv ROSBRIDGE_IP none)"/>
@@ -53,5 +54,6 @@
     <node pkg="topic_store" type="run_scenario.py" name="topic_store_scenario_runner" output="screen" required="true">
         <param name="scenario_file" value="$(arg scenario_file)"/>
         <param name="stabilise_time" value="$(arg stabilise_time)"/>
+        <param name="verbose" value="$(arg verbose)"/>
     </node>
 </launch>

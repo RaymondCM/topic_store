@@ -23,8 +23,9 @@ def run_scenario():
     # Get parameters
     stabilise_time = rospy.get_param('~stabilise_time', 0)
     scenario_file = rospy.get_param('~scenario_file', str(pathlib.Path(pkg_root) / "scenarios/default_config.yaml"))
+    verbose = rospy.get_param('~verbose', True)
 
-    data_logger = ScenarioRunner(scenario_file, stabilise_time)
+    data_logger = ScenarioRunner(scenario_file, stabilise_time, verbose)
 
 
 if __name__ == '__main__':
