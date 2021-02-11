@@ -109,26 +109,52 @@ class LoadBalancer(queue.Queue, object):
         self.max_threads = self._max_thread_count()
         self.number_of_threads = 0
         self.tasks_per_second = FPSCounter(queue_length=maxsize)
+        # Number of seconds to allow queue to catch up before adding more cores
+        self._thread_grace_period = 2.0
+        self._last_thread_added = timer()
+        self._add_thread_threshold_percent = 0.8
         for _ in range(threads):
-            self._add_thread()
+            self._add_thread(check_grace_period=False)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.join()
 
-    def _add_thread(self):
+    def _add_thread(self, check_grace_period=True):
         """Function that's used internally. If the queue of jobs ever becomes full a new thread is spawned to try to
         handle the new information in realtime"""
+        # Do not add more threads if the CPU cannot support it
         if self.number_of_threads >= self.max_threads:
             return
+
+        # Grace period so cores don't quickly accelerate to system maximum
+        if check_grace_period and (timer() - self._last_thread_added) <= self._thread_grace_period:
+            return
+
         Worker(self, self.number_of_threads).start()
         self.number_of_threads += 1
+        self._last_thread_added = timer()
 
     def add_task(self, func, args, kwargs, wait=False):
+        """
+
+        Args:
+            func: callable of the signature func(*args, **kwargs) or func(arg1, arg2, ..., kwarg1, job_meta=None)
+            args: list of arguments to pass to the func calling func(*args, job_meta={...}, **kwargs)
+            kwargs: list of keyword arguments to pass to the func calling func(*args, job_meta={...}, **kwargs)
+            wait: If true blocks until the item is placed in the queue
+
+        Returns:
+            bool: True if item placed in the queue otherwise false
+        """
         # If the number of tasks_per_second being added is lower than the current approx queue size
         # then add a thread to deal with the extra work
         self.tasks_per_second.toc()
         self.tasks_per_second.tic()
-        if self.qsize() > self.tasks_per_second.get_fps():
+
+        # Add a thread if queue_size growing faster than current processing or is nearing capacity
+        queue_size = self.qsize()
+        queue_capacity = queue_size / self.maxsize
+        if queue_size >= self.tasks_per_second.get_fps() or queue_capacity >= self._add_thread_threshold_percent:
             self._add_thread()
 
         try:
@@ -243,8 +269,8 @@ class LoadBalancer(queue.Queue, object):
                 with open('/var/run/dmesg.boot') as fh:
                     dmesg = fh.read()
             except IOError:
-                dmesgProcess = subprocess.Popen(['dmesg'], stdout=subprocess.PIPE)
-                dmesg = dmesgProcess.communicate()[0]
+                dmesg_process = subprocess.Popen(['dmesg'], stdout=subprocess.PIPE)
+                dmesg = dmesg_process.communicate()[0]
 
             res = 0
             while '\ncpu' + str(res) + ':' in dmesg:
