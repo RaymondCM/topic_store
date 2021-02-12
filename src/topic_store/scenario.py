@@ -205,5 +205,5 @@ class ScenarioRunner:
         args, kwargs = [self.subscriber_tree.get_message_tree()], {}
         added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
         if not added_task:
-            self.logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
+            self.info_logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
             self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
