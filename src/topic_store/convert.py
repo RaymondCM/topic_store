@@ -15,6 +15,8 @@ from tqdm import tqdm
 from datetime import datetime
 from pymongo.collection import ObjectId
 
+from topic_store.file_parsers import resolve_scenario_yaml
+
 try:
     from urlparse import urlparse
 except ImportError:  # Py3
@@ -161,11 +163,17 @@ def _convert_cli():
     elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".bag":
         topic_store_to_ros_bag(input_path, output_path)
     elif input_path.suffix == ".yaml" and output_path.suffix == TopicStorage.suffix:
+        input_path = resolve_scenario_yaml(input_path)
         mongodb_to_topic_store(MongoStorage.load(input_path), output_path)
     elif input_path.suffix == ".yaml" and output_path.suffix == ".bag":
+        input_path = resolve_scenario_yaml(input_path)
         mongodb_to_ros_bag(MongoStorage.load(input_path), output_path)
     elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".yaml":
+        output_path = resolve_scenario_yaml(output_path)
         topic_store_to_mongodb(input_path, output_path)
+    elif input_path.suffix == output_path.suffix:
+        print("No conversion or migration for '{}' to '{}'".format(input_path, output_path))
+        print("If you would like to copy the file please use 'cp {} {}'".format(input_path, output_path))
     elif isinstance(args.input, str) and "mongodb://" in args.input:
         srv = args.input
         collection = args.collection
