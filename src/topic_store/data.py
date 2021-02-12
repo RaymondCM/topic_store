@@ -10,7 +10,7 @@ from datetime import datetime
 import bson
 import genpy
 
-from topic_store.sanitation import desanitise_dict, DefaultTypeParser
+from topic_store.sanitation import rosify_dict, sanitise_dict
 from topic_store.utils import ros_time_as_ms, time_as_ms
 
 __all__ = ["TopicStore"]
@@ -25,7 +25,7 @@ class TopicStore:
         if not isinstance(data_tree, dict):
             raise ValueError("Data tree must be a dict to construct a TopicStore")
         # Ensure passed data tree does not contain ROS msgs
-        self.__data_tree = DefaultTypeParser()(data_tree)
+        self.__data_tree = sanitise_dict(data_tree)
         if "_id" not in self.__data_tree:
             self.__data_tree["_id"] = bson.ObjectId()
         if "_ts_meta" not in self.__data_tree:
@@ -40,7 +40,7 @@ class TopicStore:
     @property
     def msgs(self):
         if self.__msgs is None:
-            self.__msgs = desanitise_dict(self.dict)
+            self.__msgs = rosify_dict(self.dict)
         return self.__msgs
 
     # Expose document ID and meta fields
