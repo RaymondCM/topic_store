@@ -15,8 +15,9 @@ import pathlib
 
 from topic_store import get_package_root
 from topic_store.api import Storage
-from topic_store.data import TopicStore, MongoDBReverseParser, MongoDBParser
+from topic_store.data import TopicStore
 from topic_store.file_parsers import load_yaml_file
+from topic_store.sanitation import MongoDBParser, MongoDBReverseParser
 from topic_store.scenario import ScenarioFileParser
 
 try:

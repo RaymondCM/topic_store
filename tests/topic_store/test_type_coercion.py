@@ -7,7 +7,7 @@ from datetime import datetime
 import bson
 import rospy
 
-from topic_store.data import DefaultTypeParser, MongoDBParser
+from topic_store.sanitation import DefaultTypeParser, MongoDBParser
 
 
 class TestCoercion:
@@ -43,7 +43,7 @@ class TestCoercion:
 
         mongo_parser = MongoDBParser()
         actual_expected = [
-            (rospy.Time.now(), dict),
+            ({"time": rospy.Time.now()}, dict),
             (datetime.now(), type(datetime.now())),
             ("test".encode("utf-8"), str),
             ("test".encode("utf-16"), bson.binary.Binary),

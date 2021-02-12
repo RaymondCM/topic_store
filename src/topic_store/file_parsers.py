@@ -9,7 +9,9 @@ import yaml
 
 import pathlib
 
-__all__ = ["load_yaml_file", "ScenarioFileParser"]
+from topic_store import get_package_root
+
+__all__ = ["load_yaml_file", "ScenarioFileParser", "resolve_scenario_yaml"]
 
 
 def load_yaml_file(file_path):
@@ -21,6 +23,34 @@ def load_yaml_file(file_path):
         except yaml.YAMLError as exc:
             raise IOError(exc)
     return contents
+
+
+def resolve_scenario_yaml(scenario_file):
+    """If the file doesn't exist, checks if it exists relative to the package.'"""
+    # Get the package path
+    pkg_root = get_package_root()
+
+    scenario_file = pathlib.Path(scenario_file)
+    if not scenario_file.exists() or not scenario_file.is_file():
+        if not scenario_file.is_absolute():
+            scenario_folder = pkg_root / "scenarios"
+            possible_paths = [
+                pkg_root / scenario_file,  # only scenarios/filename.yaml is passed
+                scenario_folder / scenario_file,  # only filename.yaml is passed
+            ]
+            valid_paths = [p for p in possible_paths if p.is_file()]
+            if valid_paths:
+                if len(valid_paths) > 1:
+                    raise IOError("Could not automatically resolve path '{}'. Multiple paths available: {}".format(
+                        scenario_file, " ".join(map(lambda x: "\n\t- " + str(x), valid_paths))
+                    ))
+                return valid_paths[0].resolve()  # if only one of the paths is valid
+            elif scenario_folder.exists():
+                raise IOError("Scenario '{}' does not exist please provide a correct path, example paths: {}".format(
+                    scenario_file, " ".join(map(lambda x: "\n\t- " + str(x), scenario_folder.glob("*.yaml")))
+                ))
+
+    return scenario_file  # could not get a valid path and scenario folder not found
 
 
 class ScenarioFileParser:
