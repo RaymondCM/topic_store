@@ -53,14 +53,19 @@ class TopicStorage(Storage):
         if not self.path.exists():
             raise StopIteration()
         with self.path.open("rb") as fh:
+            position = -1
             while True:
                 try:
                     load_kwargs = {}
                     if sys.version_info[0] >= 3:  # python3 loading
                         load_kwargs = dict(encoding="latin1")
-                    yield TopicStore(data_tree=pickle.load(fh, **load_kwargs))
+                    position += 1
+                    tree = pickle.load(fh, **load_kwargs)
+                    yield TopicStore(data_tree=tree)
                 except EOFError:
                     break
+                except Exception as e:
+                    print("File at position {} is corrupt. Skipping, error: {}".format(position, e.message))
 
     # Add these methods back when a more efficient storage method used
     # def __getitem__(self, item=0):
