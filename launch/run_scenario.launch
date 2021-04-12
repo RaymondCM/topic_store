@@ -51,7 +51,7 @@
     </node>
 
     <!-- Launch data collection scenario -->
-    <node pkg="topic_store" type="run_scenario.py" name="topic_store_scenario_runner" output="screen" required="true">
+    <node pkg="topic_store" type="run_scenario.py" name="$(anon topic_store_scenario_runner)" output="screen" required="true">
         <param name="scenario_file" value="$(arg scenario_file)"/>
         <param name="stabilise_time" value="$(arg stabilise_time)"/>
         <param name="verbose" value="$(arg verbose)"/>
