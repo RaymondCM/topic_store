@@ -25,12 +25,15 @@ from topic_store.utils import best_logger, DefaultLogger
 
 
 class ScenarioRunner:
-    def __init__(self, scenario_file, stabilise_time, verbose=True):
+    def __init__(self, scenario_file, stabilise_time, verbose=True, queue_size=100, n_io_threads=1, threads_auto=False):
         self.saved_n = 0
 
         self.scenario_file = scenario_file
         self.stabilise_time = stabilise_time
         self.verbose = verbose
+        self.thread_queue_size = queue_size
+        self.n_threads = n_io_threads
+        self.auto_threads = threads_auto
         self.events = {}
 
         # Load Scenario
@@ -66,7 +69,7 @@ class ScenarioRunner:
         if not callable(self.collection_method_init_function):
             raise Exception("Invalid way point value ('{}()' does not exist)".format(collection_method_init_name))
 
-        self.jobs_worker = LoadBalancer(maxsize=200, threads=4)
+        self.jobs_worker = LoadBalancer(maxsize=self.thread_queue_size, threads=self.n_threads, auto=self.auto_threads)
         self.save_callback_rate = FPSCounter(self.jobs_worker.maxsize)
         self.collection_method_init_function()
 

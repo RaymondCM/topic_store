@@ -5,6 +5,9 @@
     <!-- Global Settings For All Nodes -->
     <arg name="scenario_file" default="$(find topic_store)/scenarios/default_config.yaml"/>
     <arg name="verbose" default="true"/>
+    <arg name="queue_size" default="100"/> <!-->Max size of IO queue (careful of your ram capacity) <-->
+    <arg name="threads" default="1"/> <!-->Number of IO threads<-->
+    <arg name="threads_auto" default="false"/> <!-->If true increase threads to handle heavy IO automatically<-->
 
     <!-- The IP of the rosbridge server for using the package with remote robots/systems -->
     <arg name="rosbridge_ip" default="$(optenv ROSBRIDGE_IP none)"/>
@@ -55,5 +58,8 @@
         <param name="scenario_file" value="$(arg scenario_file)"/>
         <param name="stabilise_time" value="$(arg stabilise_time)"/>
         <param name="verbose" value="$(arg verbose)"/>
+        <param name="queue_size" value="$(arg queue_size)"/>
+        <param name="threads" value="$(arg threads)"/>
+        <param name="threads_auto" value="$(arg threads_auto)"/>
     </node>
 </launch>

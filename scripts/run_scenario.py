@@ -16,10 +16,13 @@ def run_scenario():
 
     # Get parameters
     stabilise_time = rospy.get_param('~stabilise_time', 0)
-    scenario_file = resolve_scenario_yaml(rospy.get_param('~scenario_file', "database_default.yaml"))
+    scenario_file = resolve_scenario_yaml(rospy.get_param('~scenario_file', "local_tests.yaml"))
     verbose = rospy.get_param('~verbose', True)
+    queue_size = rospy.get_param('~queue_size', 100)
+    threads = rospy.get_param('~threads', 1)
+    threads_auto = rospy.get_param('~threads_auto', False)
 
-    data_logger = ScenarioRunner(str(scenario_file), stabilise_time, verbose)
+    data_logger = ScenarioRunner(str(scenario_file), stabilise_time, verbose, queue_size, threads, threads_auto)
 
 
 if __name__ == '__main__':
