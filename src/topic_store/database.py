@@ -37,7 +37,7 @@ class MongoStorage(Storage):
     """
     suffix = ".yaml"
 
-    def __init__(self, config=None, collection="default", uri=None, db_name=None, verbose=False):
+    def __init__(self, config=None, collection="default", uri=None, db_name=None, verbose=False, chunk_size=None):
         """
 
         Args:
@@ -62,7 +62,16 @@ class MongoStorage(Storage):
 
         self.client = pymongo.MongoClient(self.uri)
         self._db = self.client[self.name]
+
         self._fs = gridfs.GridFS(self._db, collection=self.collection_name)
+        self._db[self.collection_name + "." + "chunks"].create_index(
+            [('files_id', pymongo.ASCENDING), ('n', pymongo.ASCENDING)], unique=True
+        )
+        self._db[self.collection_name + "." + "files"].create_index(
+            [('filename', pymongo.ASCENDING), ('uploadDate', pymongo.ASCENDING)]
+        )
+        self.chunk_size = 16000 * 1024 if chunk_size is None else chunk_size
+
         self.collection = self._db[self.collection_name]
         self._log("DB name: '{}', Collection name: '{}'".format(self.name, self.collection_name))
 
@@ -100,7 +109,9 @@ class MongoStorage(Storage):
 
     def __gridfs_ify(self, topic_store):
         """Places all bson.binary.Binary types in the gridfs files/storage system so no limit on 16MB documents"""
-        gridfs_put_kwargs = {"document_id": topic_store.id, "session_id": topic_store.session}
+        gridfs_put_kwargs = {
+            "document_id": topic_store.id, "session_id": topic_store.session, "chunkSize": self.chunk_size
+        }
 
         def __grid_fs_binary_objects(k, v):
             if isinstance(v, bson.binary.Binary):
