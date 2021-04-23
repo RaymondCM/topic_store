@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # Provides the interface to parse topic_store messages from file system/database. Exposed by topic_store.__init__

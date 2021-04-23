@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # This file is a simple GUI for topic_store objects

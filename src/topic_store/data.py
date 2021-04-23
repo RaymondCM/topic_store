@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # Provides the container for easily handling topic_store data. Exposed by topic_store.__init__
