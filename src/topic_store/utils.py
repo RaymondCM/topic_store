@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # Suite of utilities for topic_store package
@@ -32,11 +32,13 @@ def ros_time_as_ms(timestamp=None):
 
 
 class DefaultLogger:
-    def __init__(self, verbose=True):
+    def __init__(self, verbose=True, topic=None):
         self._verbose = verbose
         self._logger = print
         # Create publisher for topic_store scenario logs
-        self._log_publisher = rospy.Publisher("/topic_store/logs", String, queue_size=1)
+        if topic is None:
+            topic = "logs"
+        self._log_publisher = rospy.Publisher("/topic_store/{}".format(topic), String, queue_size=1)
         self._base_description = "\033[93mTopic Store\033[0m: "
 
     def __call__(self, message, **kwargs):
@@ -48,8 +50,8 @@ class DefaultLogger:
 
 
 class TQDMInfiniteLogger(DefaultLogger, object):
-    def __init__(self, verbose=True, **kwargs):
-        super(TQDMInfiniteLogger, self).__init__(verbose=verbose)
+    def __init__(self, verbose=True, topic=None, **kwargs):
+        super(TQDMInfiniteLogger, self).__init__(verbose=verbose, topic=topic)
         try:
             from tqdm import tqdm
         except ImportError:
@@ -76,9 +78,9 @@ class TQDMInfiniteLogger(DefaultLogger, object):
             self._progress_bar.update(1)
 
 
-def best_logger(verbose):
+def best_logger(verbose, topic=None, **kwargs):
     """Return the best logger available"""
     try:
-        return TQDMInfiniteLogger(verbose=verbose)
+        return TQDMInfiniteLogger(verbose=verbose, topic=topic, **kwargs)
     except ImportError:
-        return DefaultLogger(verbose=verbose)
+        return DefaultLogger(verbose=verbose, topic=topic, **kwargs)
