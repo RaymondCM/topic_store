@@ -11,7 +11,7 @@ import bson
 import genpy
 
 from topic_store.sanitation import rosify_dict, sanitise_dict
-from topic_store.utils import ros_time_as_ms, time_as_ms
+from topic_store.utils import ros_time_as_ms, time_as_ms, get_size
 
 __all__ = ["TopicStore"]
 
@@ -68,41 +68,6 @@ class TopicStore:
     def __call__(self, item):
         return self.msgs[item]
 
-    @staticmethod
-    def __get_size(obj, recurse=True, human_readable=True):
-        """Sum size of object & members. Utility function for printing document size, used in __repr__."""
-        from types import ModuleType, FunctionType
-        from gc import get_referents
-        import sys
-        blacklisted_types = (type, ModuleType, FunctionType)
-
-        if isinstance(obj, blacklisted_types):
-            raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
-        size = 0
-
-        if recurse:
-            seen_ids = set()
-            objects = [obj]
-            while objects:
-                need_referents = []
-                for obj in objects:
-                    if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
-                        seen_ids.add(id(obj))
-                        size += sys.getsizeof(obj)
-                        need_referents.append(obj)
-                objects = get_referents(*need_referents)
-        else:
-            size = sys.getsizeof(obj)
-
-        if not human_readable:
-            return size
-
-        for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
-            if size < 1024.0:
-                break
-            size /= 1024.0
-        return "{:.2f}{}B".format(size, unit)
-
     def __recurse_types(self, d=None, depth=1, tabs=1, sep='\n', print_size=False):
         """Used by __repr__ to recurse dict and print types and sizes"""
         s = ""
@@ -113,7 +78,7 @@ class TopicStore:
         if d is None:
             d = self.msgs
         for k, v in d.items():
-            s += "{}{}{}{}: ".format(sep, "\t" * depth, k, ("(" + self.__get_size(v) + ")") if print_size else "")
+            s += "{}{}{}{}: ".format(sep, "\t" * depth, k, ("(" + get_size(v) + ")") if print_size else "")
             if isinstance(v, dict):
                 s += "{" + self.__recurse_types(v, depth + tabs, tabs, sep, print_size) + sep + "\t" * depth + "}"
             else:

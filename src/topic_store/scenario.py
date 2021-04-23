@@ -23,7 +23,7 @@ from topic_store.msg import CollectDataAction, CollectDataResult, \
 from topic_store.store import SubscriberTree, AutoSubscriber
 from topic_store.file_parsers import ScenarioFileParser
 from topic_store.load_balancer import LoadBalancer, FPSCounter
-from topic_store.utils import best_logger, DefaultLogger
+from topic_store.utils import best_logger, DefaultLogger, get_size, size_to_human_readable
 
 
 class ScenarioRunner:
@@ -231,7 +231,8 @@ class ScenarioMonitor:
         self.info_logger = DefaultLogger(verbose=verbose, topic="monitor")
 
         # Create subscriber tree for getting all the data
-        self.status = defaultdict(FPSCounter)
+        self.hz = defaultdict(FPSCounter)
+        self.size = defaultdict(str)
         self.no_log = no_log
         self.subscriber_tree = SubscriberTree(self.scenario.data, callback=self.topic_info_callback, pass_ref=True)
 
@@ -240,11 +241,16 @@ class ScenarioMonitor:
     def run(self):
         rate = rospy.Rate(5)
         while not rospy.is_shutdown():
-            times = {k: "{:.2f}hz".format(v.get_fps()) for k, v in self.status.items()}
-            self.logger(message=json.dumps(times, indent=4), only_publish=self.no_log)
             rate.sleep()
+            topic_info = [(k, self.hz[k].get_fps(), size_to_human_readable(self.size[k])) for k in self.hz.keys()]
+            topic_info_dict = {name: "{:.2f}hz ({})".format(hz, size) for name, hz, size in topic_info}
+            total_size = sum([size for size in self.size.values()])
+            if total_size:
+                topic_info_dict["total_size"] = "~{}".format(size_to_human_readable(total_size))
+            self.logger(message=json.dumps(topic_info_dict, indent=4), only_publish=self.no_log)
 
-    def topic_info_callback(self, auto_logger, *args, **kwargs):
+    def topic_info_callback(self, auto_logger, data, *args, **kwargs):
         topic_name = auto_logger.subscriber.subscriber.name
-        self.status[topic_name].toc()
-        self.status[topic_name].tic()
+        self.hz[topic_name].toc()
+        self.hz[topic_name].tic()
+        self.size[topic_name] = get_size(data, human_readable=False)

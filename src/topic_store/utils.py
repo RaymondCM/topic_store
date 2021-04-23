@@ -88,3 +88,42 @@ def best_logger(verbose, topic=None, **kwargs):
         return TQDMInfiniteLogger(verbose=verbose, topic=topic, **kwargs)
     except ImportError:
         return DefaultLogger(verbose=verbose, topic=topic, **kwargs)
+
+
+def get_size(obj, recurse=True, human_readable=True):
+    """Sum size of object & members. Utility function for printing document size, used in __repr__."""
+    from types import ModuleType, FunctionType
+    from gc import get_referents
+    import sys
+    blacklisted_types = (type, ModuleType, FunctionType)
+
+    if isinstance(obj, blacklisted_types):
+        raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
+    size = 0
+
+    if recurse:
+        seen_ids = set()
+        objects = [obj]
+        while objects:
+            need_referents = []
+            for obj in objects:
+                if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
+                    seen_ids.add(id(obj))
+                    size += sys.getsizeof(obj)
+                    need_referents.append(obj)
+            objects = get_referents(*need_referents)
+    else:
+        size = sys.getsizeof(obj)
+
+    if not human_readable:
+        return size
+
+    return size_to_human_readable(size)
+
+
+def size_to_human_readable(size):
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if size < 1024.0:
+            break
+        size /= 1024.0
+    return "{:.2f}{}B".format(size, unit)
