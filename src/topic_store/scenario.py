@@ -9,7 +9,9 @@
 from __future__ import absolute_import, division, print_function
 
 import datetime
+import json
 import os
+from collections import defaultdict
 
 from threading import Event
 import pathlib
@@ -210,3 +212,39 @@ class ScenarioRunner:
         if not added_task:
             self.info_logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
             self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
+
+
+class ScenarioMonitor:
+    def __init__(self, scenario_file, verbose=True, no_log=False):
+        self.saved_n = 0
+
+        self.scenario_file = scenario_file
+        self.verbose = verbose
+        self.events = {}
+
+        # Load Scenario
+        rospy.loginfo("Loading scenario: '{}'".format(scenario_file))
+        self.scenario = ScenarioFileParser(scenario_file)
+
+        # Create publisher for topic_store scenario logs
+        self.logger = best_logger(verbose=verbose, topic="monitor")
+        self.info_logger = DefaultLogger(verbose=verbose, topic="monitor")
+
+        # Create subscriber tree for getting all the data
+        self.status = defaultdict(FPSCounter)
+        self.no_log = no_log
+        self.subscriber_tree = SubscriberTree(self.scenario.data, callback=self.topic_info_callback, pass_ref=True)
+
+        self.run()
+
+    def run(self):
+        rate = rospy.Rate(5)
+        while not rospy.is_shutdown():
+            times = {k: "{:.2f}hz".format(v.get_fps()) for k, v in self.status.items()}
+            self.logger(message=json.dumps(times, indent=4), only_publish=self.no_log)
+            rate.sleep()
+
+    def topic_info_callback(self, auto_logger, *args, **kwargs):
+        topic_name = auto_logger.subscriber.subscriber.name
+        self.status[topic_name].toc()
+        self.status[topic_name].tic()

@@ -32,7 +32,7 @@ def ros_time_as_ms(timestamp=None):
 
 
 class DefaultLogger:
-    def __init__(self, verbose=True, topic=None):
+    def __init__(self, verbose=True, topic=None, **kwargs):
         self._verbose = verbose
         self._logger = print
         # Create publisher for topic_store scenario logs
@@ -41,8 +41,10 @@ class DefaultLogger:
         self._log_publisher = rospy.Publisher("/topic_store/{}".format(topic), String, queue_size=1)
         self._base_description = "\033[93mTopic Store\033[0m: "
 
-    def __call__(self, message, **kwargs):
+    def __call__(self, message, only_publish=False, **kwargs):
         self._log_publisher.publish(String(message))
+        if only_publish:
+            return
         verbose = kwargs.pop("verbose", False) or self._verbose
         if verbose:
             kwarg_str = " " + ", ".join(["{}={}".format(k, v) for k, v in kwargs.items()])
@@ -67,8 +69,10 @@ class TQDMInfiniteLogger(DefaultLogger, object):
         self._progress_bar = tqdm(**tqdm_args)
         self._progress_bar.clear()
 
-    def __call__(self, message, **kwargs):
+    def __call__(self, message, only_publish=False, **kwargs):
         self._log_publisher.publish(String(message))
+        if only_publish:
+            return
         verbose = kwargs.pop("verbose", False) or self._verbose
         if verbose:
             if kwargs:
