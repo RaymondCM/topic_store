@@ -31,16 +31,26 @@ class AutoSubscriber:
 
 class AutoLogger:
     """Automatically stores the data from a topic or python type in a container."""
-    def __init__(self, data_to_store, callback=None):
+    def __init__(self, data_to_store, callback=None, pass_ref=False):
         # Data to store is a ROS topic so store the topic result (use startswith as topic may not exist yet)
         if isinstance(data_to_store, str) and (data_to_store.startswith("/") or
                                                data_to_store in dict(rospy.get_published_topics()).keys()):
             if callback is None or not callable(callback):
                 callback = self.save
+            elif pass_ref:
+                callback = self.__get_partial(callback, self)
             self.subscriber = AutoSubscriber(data_to_store, callback=callback)
             self.data = None
         else:
             self.data = data_to_store
+
+    @staticmethod
+    def __get_partial(func, *part_args):
+        def wrapper(*extra_args):
+            args = list(part_args)
+            args.extend(extra_args)
+            return func(*args)
+        return wrapper
 
     def save(self, data):
         self.data = data
@@ -55,7 +65,9 @@ class SubscriberTree:
         >>> print(tree.get_message_tree())
         >>> # Out: {'roslog': <class 'rosgraph_msgs.msg._Log.Log'>, 'rgb': <class 'sensor_msgs.msg._Image.Image'>, ...}
     """
-    def __init__(self, named_subscribers):
+    def __init__(self, named_subscribers, callback=None, pass_ref=False):
+        self.__callback = callback
+        self.__pass_ref = pass_ref
         self.tree = self.__build_tree(named_subscribers)
 
     def __build_tree(self, named_subscribers):
@@ -68,7 +80,7 @@ class SubscriberTree:
             if isinstance(v, dict):
                 tree[k] = self.__build_tree(v)
             elif isinstance(v, (str, int, float, list, bool)):  # YAML types
-                tree[k] = AutoLogger(v)
+                tree[k] = AutoLogger(v, callback=self.__callback, pass_ref=self.__pass_ref)
             else:
                 raise rospy.ROSException("Invalid dict->str tree passed to SubscriberTree")
         return tree
