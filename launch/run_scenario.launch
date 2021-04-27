@@ -9,6 +9,7 @@
     <arg name="queue_size" default="100"/> <!-->Max size of IO queue (careful of your ram capacity) <-->
     <arg name="threads" default="1"/> <!-->Number of IO threads<-->
     <arg name="threads_auto" default="false"/> <!-->If true increase threads to handle heavy IO automatically<-->
+    <arg name="use_grid_fs" default="false"/> <!-->If true GridFS is used to accommodate messages >gt 16MB<-->
 
     <!-- The IP of the rosbridge server for using the package with remote robots/systems -->
     <arg name="rosbridge_ip" default="$(optenv ROSBRIDGE_IP none)"/>
@@ -62,6 +63,7 @@
         <param name="queue_size" value="$(arg queue_size)"/>
         <param name="threads" value="$(arg threads)"/>
         <param name="threads_auto" value="$(arg threads_auto)"/>
+        <param name="use_grid_fs" value="$(arg use_grid_fs)"/>
     </node>
 
     <group if="$(arg monitor)">

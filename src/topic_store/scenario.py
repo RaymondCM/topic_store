@@ -27,7 +27,8 @@ from topic_store.utils import best_logger, DefaultLogger, get_size, size_to_huma
 
 
 class ScenarioRunner:
-    def __init__(self, scenario_file, stabilise_time, verbose=True, queue_size=100, n_io_threads=1, threads_auto=False):
+    def __init__(self, scenario_file, stabilise_time, verbose=True, queue_size=100, n_io_threads=1, threads_auto=False,
+                 use_grid_fs=False):
         self.saved_n = 0
 
         self.scenario_file = scenario_file
@@ -36,6 +37,7 @@ class ScenarioRunner:
         self.thread_queue_size = queue_size
         self.n_threads = n_io_threads
         self.auto_threads = threads_auto
+        self.use_grid_fs = use_grid_fs
         self.events = {}
 
         # Load Scenario
@@ -148,7 +150,8 @@ class ScenarioRunner:
 
     def init_save_database(self):
         from topic_store.database import MongoStorage
-        self.db_client = MongoStorage(config=self.scenario.storage["config"], collection=self.scenario.context)
+        self.db_client = MongoStorage(config=self.scenario.storage["config"], collection=self.scenario.context,
+                                      use_grid_fs=self.use_grid_fs)
         self.info_logger("Initialised saving to database {} @ '{}/{}'".format(self.db_client.uri,
                                                                               self.db_client.name,
                                                                               self.scenario.context))

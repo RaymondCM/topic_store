@@ -21,8 +21,10 @@ def run_scenario():
     queue_size = rospy.get_param('~queue_size', 100)
     threads = rospy.get_param('~threads', 1)
     threads_auto = rospy.get_param('~threads_auto', False)
+    use_grid_fs = rospy.get_param('~use_grid_fs', False)
 
-    data_logger = ScenarioRunner(str(scenario_file), stabilise_time, verbose, queue_size, threads, threads_auto)
+    data_logger = ScenarioRunner(str(scenario_file), stabilise_time, verbose, queue_size, threads, threads_auto,
+                                 use_grid_fs)
 
 
 if __name__ == '__main__':
