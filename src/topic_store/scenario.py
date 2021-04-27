@@ -73,8 +73,13 @@ class ScenarioRunner:
         if not callable(self.collection_method_init_function):
             raise Exception("Invalid way point value ('{}()' does not exist)".format(collection_method_init_name))
 
-        self.jobs_worker = LoadBalancer(maxsize=self.thread_queue_size, threads=self.n_threads, auto=self.auto_threads)
-        self.save_callback_rate = FPSCounter(self.jobs_worker.maxsize)
+        self.save_callback_rate = FPSCounter()
+        self.event_callback_rate = FPSCounter()
+        self.extra_logs = {}
+        if self.n_threads > 0:
+            self.jobs_worker = LoadBalancer(maxsize=self.thread_queue_size, threads=self.n_threads,
+                                            auto=self.auto_threads)
+            self.save_callback_rate = FPSCounter(self.jobs_worker.maxsize)
         self.collection_method_init_function()
 
     def init_way_point_action_server(self):
@@ -127,6 +132,9 @@ class ScenarioRunner:
 
     def set_event_msg_callback(self, data, event_id):
         if event_id in self.events:
+            self.event_callback_rate.toc()
+            self.event_callback_rate.tic()
+            self.extra_logs["event_callback_rate"] = "{:.2f}".format(self.save_callback_rate.get_fps())
             self.events[event_id]["data"] = data
             self.events[event_id]["event"].set()
 
@@ -202,8 +210,12 @@ class ScenarioRunner:
             worker_id = job_meta.pop("worker_id", None)
             # Pretty print some variables
             info_str = {k.replace("worker_", ""): "{:.2f}".format(v) for k, v in job_meta.items()}
-            info_str["save_callback_rate"] = "{:.2f}".format(self.save_callback_rate.get_fps())
+            self.extra_logs["save_callback_rate"] = "{:.2f}".format(self.save_callback_rate.get_fps())
+            for k, v in self.extra_logs.items():
+                info_str[k] = v
             self.logger("Worker {} successfully saved data id='{}'".format(worker_id, saved_data_id), **info_str)
+        else:
+            self.logger("Successfully saved data id='{}'".format(saved_data_id), **self.extra_logs)
         return True, "Success!"
 
     def save(self):
@@ -211,10 +223,13 @@ class ScenarioRunner:
         self.save_callback_rate.toc()
         self.save_callback_rate.tic()
         args, kwargs = [self.subscriber_tree.get_message_tree()], {}
-        added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
-        if not added_task:
-            self.info_logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
-            self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
+        if self.n_threads == 0:  # don't use a threading model
+            self.__save(self.subscriber_tree.get_message_tree())
+        else:
+            added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
+            if not added_task:
+                self.info_logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
+                self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
 
 
 class ScenarioMonitor:
