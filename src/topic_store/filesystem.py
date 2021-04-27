@@ -65,7 +65,7 @@ class TopicStorage(Storage):
                 except EOFError:
                     break
                 except Exception as e:
-                    print("File at position {} is corrupt. Skipping, error: {}".format(position, e.message))
+                    print("File at position {} is corrupt. Skipping, error: {}".format(position, e))
 
     # Add these methods back when a more efficient storage method used
     # def __getitem__(self, item=0):
