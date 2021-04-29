@@ -1,8 +1,13 @@
-import cv2
 import numpy as np
 import ros_numpy
+import rospy
 from sensor_msgs.msg import Image, CompressedImage
 
+try:
+    import cv2
+    COMPRESSION_DISABLED = False
+except ImportError:
+    COMPRESSION_DISABLED = True
 
 _numpy_types = {
     "rgb8": (np.uint8, 3), "rgba8": (np.uint8, 4), "rgb16": (np.uint16, 3), "rgba16": (np.uint16, 4),
@@ -57,6 +62,9 @@ def _decompress_image_msg(msg, goal_encoding):
 
 
 def image_to_compressed_image(msg):
+    if COMPRESSION_DISABLED:
+        rospy.logwarn("Compression disabled due to cv2 package not being available")
+        return msg
     if isinstance(msg, Image):
         if msg.encoding not in _numpy_types:
             raise ValueError("Encoding '{}' isn't a valid for compression please disable".format(msg.encoding))
@@ -73,6 +81,9 @@ def image_to_compressed_image(msg):
 
 
 def compressed_image_to_image(msg):
+    if COMPRESSION_DISABLED:
+        rospy.logwarn("Compression disabled due to cv2 package not being available")
+        return msg
     if isinstance(msg, CompressedImage):
         format_tokens = [x.strip() for x in msg.format.split(';')]
         if len(format_tokens) == 2 and "Depth" in format_tokens[1]:
