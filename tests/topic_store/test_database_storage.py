@@ -79,7 +79,7 @@ class TestDatabase:
         if not rospy.get_node_uri():
             rospy.init_node("topic_store_tests")
 
-        client = MongoStorage(collection="python_tests")
+        client = MongoStorage(collection="python_tests", use_grid_fs=True)
 
         # Insert >16MB document
         random_array = np.random.random((3000, 3000, 3)).astype(np.float32)
