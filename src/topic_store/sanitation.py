@@ -9,6 +9,9 @@ import bson
 import genpy
 import rospy
 import roslib.message
+from sensor_msgs.msg import Image, CompressedImage
+
+from topic_store.compression import image_to_compressed_image, compressed_image_to_image
 
 try:
     from collections.abc import Mapping, Sequence, Set, ItemsView, Iterable, Callable
@@ -23,6 +26,9 @@ except NameError:  # python3 so use unicode=str
 from topic_store.utils import ros_time_as_ms
 
 __all__ = ["MongoDBParser", "DefaultTypeParser", "MongoDBReverseParser", "sanitise_dict", "rosify_dict"]
+
+# Compress all images and decompress when de sanitising
+EXPERIMENTAL_COMPRESSION_ENABLED = False
 
 
 def idx_of_instance(obj, instance_checks):
@@ -136,6 +142,26 @@ class MongoDBReverseParser(DefaultTypeParser):
     # @staticmethod
     # def bson_to_bytes(s):
     #     return str(s)
+
+
+class ImageCompressionParser(DefaultTypeParser):
+    """Parser to ensure Images are small when entered into storage"""
+
+    def __init__(self):
+        DefaultTypeParser.__init__(self)
+        self.add_converters({
+            Image: image_to_compressed_image,
+        })
+
+
+class ImageDecompressionParser(DefaultTypeParser):
+    """Parser to ensure Images are de compressed when returned from storage"""
+
+    def __init__(self):
+        DefaultTypeParser.__init__(self)
+        self.add_converters({
+            CompressedImage: compressed_image_to_image,
+        })
 
 
 class DictConverter:
@@ -321,6 +347,9 @@ def ros_msg_from_string(msg_cls):
 def enter_fn_ros_to_dict(parents, key, value):
     if isinstance(value, (genpy.Message, genpy.Time, genpy.Duration)):
         # genpy.Message return empty dict to add ROSItemsView values to (slot, len and iterable support)
+        if EXPERIMENTAL_COMPRESSION_ENABLED:
+            if isinstance(value, Image):
+                value = image_to_compressed_image(value)
         return dict(), ROSItemsView(value)
     else:
         return DictConverter.default_enter_fn(parents, key, value)
@@ -333,7 +362,11 @@ def exit_fn_ros_to_dict(parents, key, old_object, new_object, new_items):
         ret.update(new_items)
         if isinstance(old_object, (genpy.Message, genpy.Time, genpy.Duration)):
             # Add ros meta to new item for conversion back to ros types
-            ret.update(get_ros_meta(old_object))
+            meta = get_ros_meta(old_object)
+            if EXPERIMENTAL_COMPRESSION_ENABLED:
+                if isinstance(old_object, Image):
+                    meta["_ros_meta"]["type"] = get_message_type(CompressedImage)
+            ret.update(meta)
     else:
         ret = DictConverter.default_exit_fn(parents, key, old_object, new_object, new_items)
     return ret
@@ -361,6 +394,9 @@ def exit_fn_dict_to_ros(parents, key, old_object, new_object, new_items):
                 # Here we accept that if the message type has changed that we cannot necessarily fill all slots
                 rospy.logwarn("Could not set slot '{}' for class '{}' maybe the message definitions are "
                               "incompatible".format(attribute_key, new_object))
+        if EXPERIMENTAL_COMPRESSION_ENABLED:
+            if isinstance(new_object, CompressedImage):
+                new_object = compressed_image_to_image(new_object)
         return new_object
     else:
         return DictConverter.default_exit_fn(parents, key, old_object, new_object, new_items)

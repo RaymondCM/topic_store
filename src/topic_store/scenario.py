@@ -12,17 +12,17 @@ import datetime
 import json
 import os
 from collections import defaultdict
-
 from threading import Event
+
+import actionlib
 import pathlib
 import rospy
-import actionlib
 
+from topic_store.file_parsers import ScenarioFileParser
+from topic_store.load_balancer import LoadBalancer, FPSCounter
 from topic_store.msg import CollectDataAction, CollectDataResult, \
     CollectDataFeedback
 from topic_store.store import SubscriberTree, AutoSubscriber
-from topic_store.file_parsers import ScenarioFileParser
-from topic_store.load_balancer import LoadBalancer, FPSCounter
 from topic_store.utils import best_logger, DefaultLogger, get_size, size_to_human_readable
 
 
@@ -222,14 +222,14 @@ class ScenarioRunner:
         """Collates data from the scenario topic structure and saves. Returns SaveSuccess, SaveMessage"""
         self.save_callback_rate.toc()
         self.save_callback_rate.tic()
-        args, kwargs = [self.subscriber_tree.get_message_tree()], {}
+        data_hierarchy = self.subscriber_tree.get_message_tree()
         if self.n_threads == 0:  # don't use a threading model
-            self.__save(self.subscriber_tree.get_message_tree())
+            self.__save(data_hierarchy)
         else:
-            added_task = self.jobs_worker.add_task(self.__save, args, kwargs, wait=False)
+            added_task = self.jobs_worker.add_task(self.__save, [data_hierarchy], {}, wait=False)
             if not added_task:
                 self.info_logger("IO Queue Full, cannot add jobs to the queue, please wait.", verbose=True)
-                self.jobs_worker.add_task(self.__save, args, kwargs, wait=True)
+                self.jobs_worker.add_task(self.__save, [data_hierarchy], {}, wait=True)
 
 
 class ScenarioMonitor:
