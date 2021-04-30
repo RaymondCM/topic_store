@@ -9,12 +9,11 @@ import rospy
 from sensor_msgs.msg import Image, CompressedImage
 
 from topic_store.compression import image_to_compressed_image, compressed_image_to_image, compute_compression_error
-from topic_store.store import AutoSubscriber
 from topic_store.utils import best_logger, get_topic_info, get_size, size_to_human_readable
 
 
 class CompressionTransport:
-    def __init__(self, in_topic, out_topic=None, verbose=False, log_error=True):
+    def __init__(self, in_topic, out_topic=None, verbose=False, log_error=False):
         self._in = in_topic
         self._out = out_topic
         self._verbose = verbose
@@ -55,13 +54,13 @@ class CompressionTransport:
 
 def __main():
     rospy.init_node("topic_store_compression_transport", anonymous=True)
-    in_topic = str(rospy.get_param('~in', '/camera1/aligned_depth_to_color/image_raw'))
+    in_topic = str(rospy.get_param('~in', ''))
     if not in_topic:
         raise ValueError(
             "Please pass a parameter for in ie. 'rosrun topic_store quantise_and_compress.py _in:=/camera/image_raw'"
         )
     out_topic = rospy.get_param('~out', None)
-    verbose = rospy.get_param('~verbose', True)
+    verbose = rospy.get_param('~verbose', False)
     transport = CompressionTransport(in_topic, out_topic, verbose)
     rospy.spin()
 
