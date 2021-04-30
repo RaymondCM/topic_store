@@ -183,7 +183,7 @@ rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw
 rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed
 ```
 
-To decompress use the utilities provided in [compression.py](src/topic_store/compression.py).
+To decompress use the utilities provided in [compression.py](../src/topic_store/compression.py).
 
 ```python
 from topic_store.compression import image_to_compressed_image
@@ -209,7 +209,7 @@ To get an idea of the compression loss you can run the node with the following p
 rosrun rosrun topic_store quantise_and_compress.py _log_error:=true _verbose:=true _in:=/camera/depth/image_raw 
 ```
 
-# Implementation Road Map
+# Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
 - [x] Tree based Subscribers and Message history
@@ -228,4 +228,4 @@ rosrun rosrun topic_store quantise_and_compress.py _log_error:=true _verbose:=tr
 - [x] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
 - [x] Added partial support for TLS/Auth in MongoClient (use uri arg or convert.py with -u)
 - [x] Added support for TLS/Auth in MongoClient and infer from mongo configs
-- [x] Added image compression and quantisation (bi directional)
+- [x] Added image compression and quantisation (bi-directional)
