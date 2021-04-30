@@ -178,8 +178,8 @@ Note depth compression is incredibly lossy so please only use this on depth maps
 
 ```bash
 # For example to compress and quantise a colour and image topic
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/compressed
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/ts_compressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/ts_compressed
 ```
 
 To decompress use the utilities provided in [compression.py](../src/topic_store/compression.py).
@@ -198,8 +198,8 @@ Or run the `quantise_and_compress` node again on the new topic!
 
 ```bash
 # For example to decompress a colour and image topic
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw/compressed  # out=/camera/colour/image_raw/compressed/decompressed
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw/compressed  # out=/camera/depth/image_raw/compressed/decompressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw/ts_compressed  # out=/camera/colour/image_raw/ts_compressed/ts_decompressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw/ts_compressed  # out=/camera/depth/image_raw/ts_compressed/ts_decompressed
 ```
 
 To get an idea of the compression loss you can run the node with the following parameters.
