@@ -9,9 +9,19 @@ from datetime import datetime
 
 import rospy
 
-__all__ = ["time_as_ms", "ros_time_as_ms", "DefaultLogger", "best_logger"]
+__all__ = ["time_as_ms", "ros_time_as_ms", "DefaultLogger", "best_logger", "get_topic_info", "get_partial", "get_size",
+           "size_to_human_readable", "idx_of_instance"]
 
 from std_msgs.msg import String
+
+
+def idx_of_instance(obj, instance_checks):
+    if isinstance(instance_checks, tuple):
+        instance_checks = (instance_checks,)
+    for idx, _type in enumerate(instance_checks):
+        if isinstance(obj, _type):
+            return idx
+    return -1
 
 
 def time_as_ms(timestamp=None):
@@ -127,3 +137,18 @@ def size_to_human_readable(size):
             break
         size /= 1024.0
     return "{:.2f}{}B".format(size, unit)
+
+
+def get_partial(func, *part_args):
+    def wrapper(*extra_args):
+        args = list(part_args)
+        args.extend(extra_args)
+        return func(*args)
+
+    return wrapper
+
+
+def get_topic_info(topic):
+    """Returns topic_class, topic_type tuple"""
+    import rostopic  # No python package so here to enable some non-ros functionality
+    return rostopic.get_topic_class(topic)[0], rostopic.get_topic_type(topic)[0]

@@ -11,22 +11,18 @@ from topic_store.data import TopicStore
 
 __all__ = ["SubscriberTree", "AutoSubscriber"]
 
+from topic_store.utils import get_partial, get_topic_info
+
 
 class AutoSubscriber:
     """Subscribes to a topic from a string argument"""
-
-    def __init__(self, name, callback=None, callback_args=None):
+    def __init__(self, name, callback=None, callback_args=None, queue_size=1):
         self.topic = name
-        import rostopic  # No python package so here to enable some non-ros functionality
-
-        topic_class = rostopic.get_topic_class(self.topic)
-        topic_type = rostopic.get_topic_type(self.topic)
-        if not topic_class[0] or not topic_type[0]:
+        self.cls, self.cls_type = get_topic_info(self.topic)
+        if not self.cls or not self.cls_type:
             raise rospy.ROSException("Could not get message class for topic '{}'".format(self.topic))
-        self.cls, self.cls_type = topic_class[0], topic_type[0]
-
         self.subscriber = rospy.Subscriber(self.topic, self.cls, callback=callback, callback_args=callback_args,
-                                           queue_size=1)
+                                           queue_size=queue_size)
 
 
 class AutoLogger:
@@ -38,19 +34,11 @@ class AutoLogger:
             if callback is None or not callable(callback):
                 callback = self.save
             elif pass_ref:
-                callback = self.__get_partial(callback, self)
+                callback = get_partial(callback, self)
             self.subscriber = AutoSubscriber(data_to_store, callback=callback)
             self.data = None
         else:
             self.data = data_to_store
-
-    @staticmethod
-    def __get_partial(func, *part_args):
-        def wrapper(*extra_args):
-            args = list(part_args)
-            args.extend(extra_args)
-            return func(*args)
-        return wrapper
 
     def save(self, data):
         self.data = data

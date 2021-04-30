@@ -3,6 +3,8 @@ import ros_numpy
 import rospy
 from sensor_msgs.msg import Image, CompressedImage
 
+from topic_store.utils import get_partial
+
 try:
     import cv2
     COMPRESSION_DISABLED = False
@@ -25,16 +27,29 @@ _numpy_types = {
     "64FC4": (np.float64, 4)
 }
 
+
 _supported_types = {k: v for k, v in _numpy_types.items() if (v[0] == np.uint8 and v[1] == 3) or k == "16UC1"}
 _depth_types = {k: v for k, v in _numpy_types.items() if k == "16UC1"}
+
+
+def _normalise_image(img, img_min, img_max):
+    return (img.astype(np.float64) - img_min) / (img_max - img_min)
+
+
+def _denormalise_image(img, img_min, img_max):
+    return img.astype(np.float64) * (img_max - img_min) + img_min
 
 
 def _compress_depth_msg(msg):
     cmp_img_msg = CompressedImage()
     cmp_img_msg.header = msg.header
+    img_16_data = ros_numpy.numpify(msg)
+    img_min, img_max = img_16_data.min(), img_16_data.max()
+    img_float = _normalise_image(img_16_data, img_min, img_max) * 255.0
     # TODO: this is not standard format but the only get it working stably
-    cmp_img_msg.format = '{}; compressedDepth'.format(msg.encoding)
-    cmp_img_msg.data += np.array(cv2.imencode('.png', ros_numpy.numpify(msg))[1]).tostring()
+    cmp_img_msg.format = '{}; compressedDepth as 8UC1@{}:{}'.format(msg.encoding, img_min, img_max)
+    img_8_data = img_float.astype(np.uint8)
+    cmp_img_msg.data = np.array(cv2.imencode('.jpg', img_8_data)[1]).tostring()
     return cmp_img_msg
 
 
@@ -47,18 +62,29 @@ def _compress_image_msg(msg):
     return cmp_img_msg
 
 
-def _decompress_depth_msg(msg, goal_encoding):
-    depth_img_raw = cv2.imdecode(np.frombuffer(msg.data, np.uint8), -1)
-    img_msg = ros_numpy.msgify(Image, depth_img_raw, encoding=goal_encoding)
+def _decompress_depth_msg(msg):
+    depth_img_raw = cv2.imdecode(np.fromstring(msg.data, np.uint8), cv2.IMREAD_UNCHANGED)
+    img_min, img_max = [float(s) for s in msg.format.split('@')[1].split(":")]
+    depth_float = _denormalise_image(depth_img_raw.astype(np.float64) / 255.0, img_min, img_max)
+    format_tokens = [x.strip() for x in msg.format.split(';')]
+    goal_encoding = format_tokens[0]
+    img_msg = ros_numpy.msgify(Image, depth_float.astype(np.uint16), encoding=goal_encoding)
     img_msg.header = msg.header
     return img_msg
 
 
-def _decompress_image_msg(msg, goal_encoding):
+def _decompress_image_msg(msg):
     colour_img_raw = cv2.imdecode(np.fromstring(msg.data, np.uint8), cv2.IMREAD_COLOR)
+    format_tokens = [x.strip() for x in msg.format.split(';')]
+    goal_encoding = format_tokens[0]
     img_msg = ros_numpy.msgify(Image, colour_img_raw, encoding=goal_encoding)
     img_msg.header = msg.header
     return img_msg
+
+
+def compute_compression_error(msg):
+    dec_cmp = compressed_image_to_image(image_to_compressed_image(msg))
+    return (ros_numpy.numpify(msg).astype(np.float64) - ros_numpy.numpify(dec_cmp).astype(np.float64)).mean()
 
 
 def image_to_compressed_image(msg):
@@ -87,6 +113,6 @@ def compressed_image_to_image(msg):
     if isinstance(msg, CompressedImage):
         format_tokens = [x.strip() for x in msg.format.split(';')]
         if len(format_tokens) == 2 and "Depth" in format_tokens[1]:
-            return _decompress_depth_msg(msg, goal_encoding=format_tokens[0])
-        return _decompress_image_msg(msg, goal_encoding=format_tokens[0])
+            return _decompress_depth_msg(msg)
+        return _decompress_image_msg(msg)
     return msg
