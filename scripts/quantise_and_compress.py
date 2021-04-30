@@ -61,7 +61,8 @@ def __main():
         )
     out_topic = rospy.get_param('~out', None)
     verbose = rospy.get_param('~verbose', False)
-    transport = CompressionTransport(in_topic, out_topic, verbose)
+    log_error = rospy.get_param('~log_error', False)
+    transport = CompressionTransport(in_topic, out_topic, verbose, log_error)
     rospy.spin()
 
 

@@ -4,7 +4,12 @@
 ![CI](https://github.com/RaymondKirk/topic_store/workflows/Topic%20Store/badge.svg?branch=master)
 [![PyPi](http://badge.fury.io/py/topic-store.svg)](https://pypi.org/project/topic-store/)
 
-ROS package used for serialising common ROS messages to a database or filesystem.
+Topic Store is a ROS package for storing ROS messages to a database or filesystem.
+
+Unlike ROS bags Topic Store adds flexibility by serialising all messages into a data hierarchy that's easily 
+searchable with database queries and allows for remote storage. 
+
+You can also use Topic Store as a standalone python package to read and write data without a ROS installation!
 
 # Installation
 ### ROS 
@@ -166,6 +171,44 @@ Example call:
 convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tlsAllowInvalidCertificates=true" -c 2020_riseholme_framos_cameras -q '{"_id":"ObjectId(5f115ee6af915351df739757)"}' -p '{"cameras.top.color":1, "robot": 1}' -o out.bag
 ```
 
+## Storing high bandwidth image data
+
+To store a lot of image data you will be limited to the IO of your machine. 
+Topic Store offers a quantisation and compression solution (lossy) to reduce IO load and increase capture performance.
+Note depth compression is incredibly lossy so please only use this on depth maps with a low depth range i.e 0-1 meters.
+
+```bash
+# For example to compress and quantise a colour and image topic
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/compressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed
+```
+
+To decompress use the utilities provided in [compression.py](src/topic_store/compression.py).
+
+```python
+from topic_store.compression import image_to_compressed_image
+from topic_store.compression import compressed_image_to_image
+from sensor_msgs.msg import Image
+
+image_msg = Image()
+compressed_msg = image_to_compressed_image(image_msg)  # to compress
+decompressed_msg = compressed_image_to_image(compressed_msg)  # to decompress
+```
+
+Or run the `quantise_and_compress` node again on the new topic!
+
+```bash
+# For example to decompress a colour and image topic
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw/compressed  # out=/camera/colour/image_raw/compressed/decompressed
+rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw/compressed  # out=/camera/depth/image_raw/compressed/decompressed
+```
+
+To get an idea of the compression loss you can run the node with the following parameters.
+
+```bash
+rosrun rosrun topic_store quantise_and_compress.py _log_error:=true _verbose:=true _in:=/camera/depth/image_raw 
+```
+
 # Implementation Road Map
 
 - [x] Implement auto-subscribers and auto-data loggers
@@ -184,4 +227,5 @@ convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tl
 - [x] Support for GridFS or document splitting via list declaration in the scenario files.
 - [x] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
 - [x] Added partial support for TLS/Auth in MongoClient (use uri arg or convert.py with -u)
-- [ ] Added support for TLS/Auth in MongoClient and infer from mongo configs
+- [x] Added support for TLS/Auth in MongoClient and infer from mongo configs
+- [x] Added image compression and quantisation (bi directional)
