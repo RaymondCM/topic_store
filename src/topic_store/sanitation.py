@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2021
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 # Provides type coercion and BSON/JSON/Python dict sanitation methods for any class in a nested dict structure.

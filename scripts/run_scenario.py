@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#  Raymond Kirk (Tunstill) Copyright (c) 2021
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 from __future__ import absolute_import, division, print_function
@@ -16,7 +16,7 @@ def run_scenario():
 
     # Get parameters
     stabilise_time = rospy.get_param('~stabilise_time', 0)
-    scenario_file = resolve_scenario_yaml(rospy.get_param('~scenario_file', "database_default.yaml"))
+    scenario_file = resolve_scenario_yaml(rospy.get_param('~scenario_file', "local_tests.yaml"))
     verbose = rospy.get_param('~verbose', True)
     queue_size = rospy.get_param('~queue_size', 100)
     threads = rospy.get_param('~threads', 1)

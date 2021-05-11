@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
+#  Email: ray.tunstill@gmail.com
+
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 import ros_numpy
 import rospy
@@ -5,6 +12,7 @@ from sensor_msgs.msg import Image, CompressedImage
 
 from topic_store.utils import get_partial
 
+COMPRESSION_DISABLED = True
 try:
     import cv2
     COMPRESSION_DISABLED = False

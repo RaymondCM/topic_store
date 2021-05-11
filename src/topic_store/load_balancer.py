@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#  Raymond Kirk (Tunstill) Copyright (c) 2021
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 # LoadBalancing utilities from raytils (https://github.com/RaymondKirk/raytils, https://pypi.org/project/raytils/)

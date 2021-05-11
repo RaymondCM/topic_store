@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2021
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 # Suite of utilities for topic_store package

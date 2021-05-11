@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#  Raymond Kirk (Tunstill) Copyright (c) 2021
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 # This file is a simple GUI for topic_store objects
