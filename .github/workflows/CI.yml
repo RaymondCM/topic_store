@@ -14,11 +14,11 @@ jobs:
         run: | # swap default config values for test values
           sed -i -- "s/65530/27017/" ./config/default_db_config.yaml
           sed -i -- "s/0.0.0.0/mongodb/" ./config/default_db_config.yaml
-          docker-compose -f docker-compose-ci.yml build
+          docker-compose -f ./docker/docker-compose-ci.yml build
         timeout-minutes: 5
       - name: Setup Mongo database
-        run: docker-compose -f docker-compose-ci.yml up -d mongodb
+        run: docker-compose -f ./docker/docker-compose-ci.yml up -d mongodb
         timeout-minutes: 3
       - name: Run Unit Tests
-        run: docker-compose -f docker-compose-ci.yml run --rm topic_store_test bash -c '. /catkin_ws/devel/setup.bash; rostest topic_store topic_store.test'
+        run: docker-compose -f ./docker/docker-compose-ci.yml run --rm topic_store_test bash -c '. /catkin_ws/devel/setup.bash; rostest topic_store topic_store.test'
         timeout-minutes: 3
