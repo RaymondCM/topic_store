@@ -5,7 +5,7 @@ services:
   topic_store_test:
     build:
       context: ../
-      dockerfile: ./Dockerfile.ci
+      dockerfile: ./docker/Dockerfile.ci
     links:
       - mongodb
     depends_on:
