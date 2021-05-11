@@ -173,39 +173,17 @@ convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tl
 ## Storing high bandwidth image data
 
 To store a lot of image data you will be limited to the IO of your machine. 
-Topic Store offers a quantisation and compression solution (lossy) to reduce IO load and increase capture performance.
-Note depth compression is incredibly lossy so please only use this on depth maps with a low depth range i.e 0-1 meters.
+[Topic Compression](https://github.com/RaymondKirk/topic_compression) offers a compression solution to increase capture performance.
 
 ```bash
-# For example to compress and quantise a colour and image topic
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/ts_compressed
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/ts_compressed
-```
+# Install the ROS package
+cd catkin_ws/src
+git clone https://github.com/RaymondKirk/topic_compression
+catkin build topic_compression
 
-To decompress use the utilities provided in [compression.py](../src/topic_store/compression.py).
-
-```python
-from topic_store.compression import image_to_compressed_image
-from topic_store.compression import compressed_image_to_image
-from sensor_msgs.msg import Image
-
-image_msg = Image()
-compressed_msg = image_to_compressed_image(image_msg)  # to compress
-decompressed_msg = compressed_image_to_image(compressed_msg)  # to decompress
-```
-
-Or run the `quantise_and_compress` node again on the new topic!
-
-```bash
-# For example to decompress a colour and image topic
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/colour/image_raw/ts_compressed  # out=/camera/colour/image_raw/ts_compressed/ts_decompressed
-rosrun rosrun topic_store quantise_and_compress.py _in:=/camera/depth/image_raw/ts_compressed  # out=/camera/depth/image_raw/ts_compressed/ts_decompressed
-```
-
-To get an idea of the compression loss you can run the node with the following parameters.
-
-```bash
-rosrun rosrun topic_store quantise_and_compress.py _log_error:=true _verbose:=true _in:=/camera/depth/image_raw 
+# Compression/Decompression is chosen automatically so just pass the input topic name and optionally the out topic name
+rosrun topic_compression run in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/compressed 
+rosrun topic_compression run in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed 
 ```
 
 # Road Map
