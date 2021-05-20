@@ -39,7 +39,7 @@ pip install --extra-index-url https://rospypi.github.io/simple/ topic-store
 To install other dependencies i.e. `ros_numpy` you can run the following
 
 ```bash
-pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy sensor_msgs geometry_msgs nav_msgs                                                       130 python3-library!+?
+pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy
 ```
 
 # Usage
