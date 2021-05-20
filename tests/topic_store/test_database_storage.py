@@ -53,7 +53,7 @@ class TestDatabase:
         client = MongoStorage(collection="python_tests")
 
         # Test ROS_Message Serialisation with common Image Types
-        from topic_store.compression import _numpy_types as numpy_types
+        from topic_store.utils import _numpy_types as numpy_types
 
         for encoding, np_type in numpy_types.items():
             size = (32, 32, np_type[1]) if np_type[1] != 1 else (32, 32)
