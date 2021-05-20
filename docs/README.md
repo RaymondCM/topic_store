@@ -185,24 +185,3 @@ catkin build topic_compression
 rosrun topic_compression run in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/compressed 
 rosrun topic_compression run in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed 
 ```
-
-# Road Map
-
-- [x] Implement auto-subscribers and auto-data loggers
-- [x] Tree based Subscribers and Message history
-- [x] Serialisation from genpy.Message to python types
-- [x] Parser for type compatibility between genpy.Message<->Python<->BSON<->MongoDB
-- [x] Scenario files for describing data collection behaviours
-- [x] File system storage method as a ROS bag replacement for better compatibility.
-- [x] Added database storage method to scenarios
-- [x] Added convert to database from filesystem compatibility (via convert.py)
-- [x] Added convert to filesystem from database compatibility (via convert.py)
-- [x] Added convert to ROS bag from filesystem compatibility (via convert.py)
-- [x] Added convert to ROS bag from database compatibility (via convert.py)
-- [x] Added support for complex database creations via mongo configs
-- [x] Added URI inference from mongo configs to make API simpler
-- [x] Support for GridFS or document splitting via list declaration in the scenario files.
-- [x] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
-- [x] Added partial support for TLS/Auth in MongoClient (use uri arg or convert.py with -u)
-- [x] Added support for TLS/Auth in MongoClient and infer from mongo configs
-- [x] Added image compression and quantisation (bi-directional)
