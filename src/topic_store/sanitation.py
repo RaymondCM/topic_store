@@ -11,8 +11,6 @@ import rospy
 import roslib.message
 from sensor_msgs.msg import Image, CompressedImage
 
-from topic_store.compression import image_to_compressed_image, compressed_image_to_image
-
 try:
     from collections.abc import Mapping, Sequence, Set, ItemsView, Iterable, Callable
 except ImportError:  # python3 so use collections package
