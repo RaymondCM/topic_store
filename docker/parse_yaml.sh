@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # Python function to load yaml and print to STD_OUT

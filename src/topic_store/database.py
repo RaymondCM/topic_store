@@ -1,4 +1,4 @@
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2019
 #  Email: ray.tunstill@gmail.com
 
 # This file contains the interface to a mongo_db client
@@ -37,7 +37,8 @@ class MongoStorage(Storage):
     """
     suffix = ".yaml"
 
-    def __init__(self, config=None, collection="default", uri=None, db_name=None, verbose=False):
+    def __init__(self, config=None, collection="default", uri=None, db_name=None, verbose=False, chunk_size=None,
+                 use_grid_fs=False):
         """
 
         Args:
@@ -62,7 +63,18 @@ class MongoStorage(Storage):
 
         self.client = pymongo.MongoClient(self.uri)
         self._db = self.client[self.name]
-        self._fs = gridfs.GridFS(self._db, collection=self.collection_name)
+
+        self._use_grid_fs = use_grid_fs
+        if self._use_grid_fs:
+            self._fs = gridfs.GridFS(self._db, collection=self.collection_name)
+            self._db[self.collection_name + "." + "chunks"].create_index(
+                [('files_id', pymongo.ASCENDING), ('n', pymongo.ASCENDING)], unique=True
+            )
+            self._db[self.collection_name + "." + "files"].create_index(
+                [('filename', pymongo.ASCENDING), ('uploadDate', pymongo.ASCENDING)]
+            )
+            self.chunk_size = 16000 * 1024 if chunk_size is None else chunk_size
+
         self.collection = self._db[self.collection_name]
         self._log("DB name: '{}', Collection name: '{}'".format(self.name, self.collection_name))
 
@@ -100,7 +112,9 @@ class MongoStorage(Storage):
 
     def __gridfs_ify(self, topic_store):
         """Places all bson.binary.Binary types in the gridfs files/storage system so no limit on 16MB documents"""
-        gridfs_put_kwargs = {"document_id": topic_store.id, "session_id": topic_store.session}
+        gridfs_put_kwargs = {
+            "document_id": topic_store.id, "session_id": topic_store.session, "chunkSize": self.chunk_size
+        }
 
         def __grid_fs_binary_objects(k, v):
             if isinstance(v, bson.binary.Binary):
@@ -133,8 +147,11 @@ class MongoStorage(Storage):
         if not isinstance(topic_store, TopicStore):
             raise ValueError("Can only insert TopicStore items into the database not '{}'".format(type(topic_store)))
 
-        parsed_store = self.__gridfs_ify(topic_store)
-        return self.collection.insert_one(parsed_store)
+        if self._use_grid_fs:
+            parsed_dict = self.__gridfs_ify(topic_store)
+        else:
+            parsed_dict = self.parser(topic_store.dict.copy())
+        return self.collection.insert_one(parsed_dict)
 
     def update_one(self, query, update, *args, **kwargs):
         """Updates a single document matched by query"""
@@ -171,7 +188,8 @@ class MongoStorage(Storage):
 
         find_cursor = self.collection.find(*args, **kwargs)
 
-        return TopicStoreCursor(find_cursor, apply_fn=None if skip_fetch_binary else self.__ungridfs_ify,
+        return TopicStoreCursor(find_cursor,
+                                apply_fn=None if (skip_fetch_binary or not self._use_grid_fs) else self.__ungridfs_ify,
                                 skip_on_error=skip_on_error)
 
     __iter__ = find
@@ -188,7 +206,7 @@ class MongoStorage(Storage):
                 return doc
 
             parsed_document = self.reverse_parser(doc)
-            if not skip_fetch_binary:
+            if not skip_fetch_binary and self._use_grid_fs:
                 parsed_document = self.__ungridfs_ify(parsed_document)
             return TopicStore(parsed_document)
         except Exception as e:

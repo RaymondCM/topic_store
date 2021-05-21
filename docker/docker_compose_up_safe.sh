@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#  Raymond Kirk (Tunstill) Copyright (c) 2020
+#  Raymond Kirk (Tunstill) Copyright (c) 2021
 #  Email: ray.tunstill@gmail.com
 
 # File to safely bring up a mongod instance inside a docker container and load environment variables from YAML config

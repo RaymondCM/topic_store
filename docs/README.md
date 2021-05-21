@@ -3,7 +3,12 @@
 ![CI](https://github.com/RaymondKirk/topic_store/workflows/Topic%20Store/badge.svg?branch=master)
 [![PyPi](http://badge.fury.io/py/topic-store.svg)](https://pypi.org/project/topic-store/)
 
-ROS package used for serialising common ROS messages to a database or filesystem.
+Topic Store is a ROS package for storing ROS messages to a database or filesystem.
+
+Unlike ROS bags Topic Store adds flexibility by serialising all messages into a data hierarchy that's easily 
+searchable with database queries and allows for remote storage. 
+
+You can also use Topic Store as a standalone python package to read and write data without a ROS installation!
 
 # Installation
 ### ROS 
@@ -34,7 +39,7 @@ pip install --extra-index-url https://rospypi.github.io/simple/ topic-store
 To install other dependencies i.e. `ros_numpy` you can run the following
 
 ```bash
-pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy sensor_msgs geometry_msgs nav_msgs                                                       130 python3-library!+?
+pip install --extra-index-url https://rospypi.github.io/simple/ ros_numpy
 ```
 
 # Usage
@@ -165,22 +170,18 @@ Example call:
 convert.py -i "mongodb://USER:PASS@HOST:PORT/?authSource=ff_rasberry&tls=true&tlsAllowInvalidCertificates=true" -c 2020_riseholme_framos_cameras -q '{"_id":"ObjectId(5f115ee6af915351df739757)"}' -p '{"cameras.top.color":1, "robot": 1}' -o out.bag
 ```
 
-# Implementation Road Map
+## Storing high bandwidth image data
 
-- [x] Implement auto-subscribers and auto-data loggers
-- [x] Tree based Subscribers and Message history
-- [x] Serialisation from genpy.Message to python types
-- [x] Parser for type compatibility between genpy.Message<->Python<->BSON<->MongoDB
-- [x] Scenario files for describing data collection behaviours
-- [x] File system storage method as a ROS bag replacement for better compatibility.
-- [x] Added database storage method to scenarios
-- [x] Added convert to database from filesystem compatibility (via convert.py)
-- [x] Added convert to filesystem from database compatibility (via convert.py)
-- [x] Added convert to ROS bag from filesystem compatibility (via convert.py)
-- [x] Added convert to ROS bag from database compatibility (via convert.py)
-- [x] Added support for complex database creations via mongo configs
-- [x] Added URI inference from mongo configs to make API simpler
-- [x] Support for GridFS or document splitting via list declaration in the scenario files.
-- [x] ~~Integration of https://github.com/DreamingRaven/python-ezdb~~
-- [x] Added partial support for TLS/Auth in MongoClient (use uri arg or convert.py with -u)
-- [ ] Added support for TLS/Auth in MongoClient and infer from mongo configs
+To store a lot of image data you will be limited to the IO of your machine. 
+[Topic Compression](https://github.com/RaymondKirk/topic_compression) offers a compression solution to increase capture performance.
+
+```bash
+# Install the ROS package
+cd catkin_ws/src
+git clone https://github.com/RaymondKirk/topic_compression
+catkin build topic_compression
+
+# Compression/Decompression is chosen automatically so just pass the input topic name and optionally the out topic name
+rosrun topic_compression run in:=/camera/colour/image_raw  # out=/camera/colour/image_raw/compressed 
+rosrun topic_compression run in:=/camera/depth/image_raw  # out=/camera/depth/image_raw/compressed 
+```

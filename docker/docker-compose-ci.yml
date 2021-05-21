@@ -4,7 +4,7 @@ services:
 
   topic_store_test:
     build:
-      context: ./
+      context: ../
       dockerfile: ./docker/Dockerfile.ci
     links:
       - mongodb
