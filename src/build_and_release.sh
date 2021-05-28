@@ -18,8 +18,8 @@ function build_and_release {
   pip install --upgrade setuptools wheel twine
   rm -r build dist || true
   python setup.py sdist bdist_wheel
-#  python -m twine upload dist/* || true
-#  rm -r build dist || true
+  python -m twine upload dist/* || true
+  rm -r build dist || true
 }
 
 # first copy necessary files
