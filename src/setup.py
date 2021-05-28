@@ -13,11 +13,19 @@ __package_name = "topic_store"
 
 if __name__ == '__main__':
     import xml.etree.ElementTree as ET
-    root_path = os.path.join(os.path.abspath(__file__), "../")
-    package_path = os.path.abspath(os.path.join(root_path, "../package.xml"))
-    requirements_path = os.path.abspath(os.path.join(root_path, "../requirements.txt"))
-    extra_requirements_path = os.path.abspath(os.path.join(root_path, "extra_requirements.txt"))
-    readme_path = os.path.abspath(os.path.join(root_path, "../docs/README.md"))
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    ros_package_root = os.path.abspath(os.path.join(project_root, "../"))
+
+    # Try to auto get these files
+    for root_path in [project_root, ros_package_root]:
+        package_path = os.path.abspath(os.path.join(root_path, "package.xml"))
+        requirements_path = os.path.abspath(os.path.join(root_path, "requirements.txt"))
+        extra_requirements_path = os.path.abspath(os.path.join(project_root, "extra_requirements.txt"))
+        readme_path = os.path.abspath(os.path.join(root_path, "docs/README.md"))
+        if os.path.exists(package_path):
+            break
+    if not os.path.exists(package_path):
+        raise IOError("Cannot find package.xml your install is corrupted.")
 
     package_xml = ET.parse(str(package_path)).getroot()
     version = package_xml.find("version").text
@@ -28,6 +36,10 @@ if __name__ == '__main__':
         extra_requirements = list(map(lambda x: x.strip(), fh.readlines()))
 
     requirements.extend(extra_requirements)
+    required_files = [
+        'package.xml', 'LICENCE', 'CHANGELOG.rst', 'requirements.txt', 'extra_requirements.txt',
+        'README.md'
+    ]
 
     setuptools.setup(
         name=__package_name,
@@ -51,6 +63,7 @@ if __name__ == '__main__':
         install_requires=requirements,
         dependency_links=["https://rospypi.github.io/simple/"],  # deprecated: use pip install --extra-index-url
         python_requires='>=2.7',
-        package_data={'': ['../package.xml', '../LICENCE', '../CHANGELOG']},
+        package_data={'': required_files},
+        data_files=[(project_root, required_files)],
         include_package_data=True,
     )

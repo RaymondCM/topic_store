@@ -1,3 +1,6 @@
-include ../package.xml
-include ../LICENCE
-include ../CHANGELOG
+include package.xml
+include LICENCE
+include CHANGELOG.rst
+include requirements.txt
+include extra_requirements.txt
+include README.md
