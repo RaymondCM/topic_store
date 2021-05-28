@@ -14,19 +14,19 @@ __package_name = "topic_store"
 if __name__ == '__main__':
     import xml.etree.ElementTree as ET
     project_root = os.path.dirname(os.path.abspath(__file__))
-    ros_package_root = os.path.abspath(os.path.join(project_root, "../"))
 
     # Try to auto get these files
-    for root_path in [project_root, ros_package_root]:
-        package_path = os.path.abspath(os.path.join(root_path, "package.xml"))
-        requirements_path = os.path.abspath(os.path.join(root_path, "requirements.txt"))
-        extra_requirements_path = os.path.abspath(os.path.join(project_root, "extra_requirements.txt"))
-        readme_path = os.path.abspath(os.path.join(root_path, "docs/README.md"))
-        if os.path.exists(package_path):
-            break
+    package_path = os.path.abspath(os.path.join(project_root, "package.xml"))
+    requirements_path = os.path.abspath(os.path.join(project_root, "requirements.txt"))
+    extra_requirements_path = os.path.abspath(os.path.join(project_root, "extra_requirements.txt"))
+    readme_path = os.path.abspath(os.path.join(project_root, "README.md"))
     if not os.path.exists(package_path):
-        raise IOError("Cannot find package.xml your install is corrupted.")
-
+        raise IOError("Cannot find package.xml. If you're building from ROS please run in setup.py folder first: "
+                      + "\tcp .. / package.xml. /"
+                      + "\tcp .. / LICENCE. /"
+                      + "\tcp .. / docs / README.md. /"
+                      + "\tcp .. / CHANGELOG.rst. /"
+                      + "\tcp .. / requirements.txt. /")
     package_xml = ET.parse(str(package_path)).getroot()
     version = package_xml.find("version").text
 
