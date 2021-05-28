@@ -18,8 +18,10 @@ except ImportError:  # python3 so use collections package
 
 try:
     unicode
+    basestring
 except NameError:  # python3 so use unicode=str
     unicode = str
+    basestring = str
 
 from topic_store.utils import ros_time_as_ms
 
