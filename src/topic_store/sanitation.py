@@ -19,9 +19,11 @@ except ImportError:  # python3 so use collections package
 try:
     unicode
     basestring
+    py23bytes = str
 except NameError:  # python3 so use unicode=str
     unicode = str
     basestring = str
+    py23bytes = bytes
 
 from topic_store.utils import ros_time_as_ms
 
@@ -244,7 +246,7 @@ class DictConverter:
     @staticmethod
     def default_enter_fn(parents, key, value):
         # Responsible for getting the items to be traversed/updated in visit and exit respectively
-        if isinstance(value, basestring):
+        if isinstance(value, (basestring, py23bytes)):
             return value, False
         elif isinstance(value, Mapping):
             return value.__class__(), ItemsView(value)
