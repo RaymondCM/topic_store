@@ -51,4 +51,6 @@ if __name__ == '__main__':
         install_requires=requirements,
         dependency_links=["https://rospypi.github.io/simple/"],  # deprecated: use pip install --extra-index-url
         python_requires='>=2.7',
+        package_data={'': ['../package.xml', '../LICENCE', '../CHANGELOG']},
+        include_package_data=True,
     )

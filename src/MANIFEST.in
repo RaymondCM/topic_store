@@ -1,0 +1,3 @@
+include ../package.xml
+include ../LICENCE
+include ../CHANGELOG
