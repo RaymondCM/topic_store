@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 import rospkg
 import bson
+import time
 import gridfs
 import pymongo
 from copy import copy
@@ -230,16 +231,25 @@ class MongoStorage(Storage):
     def get_unique_sessions(self):
         """Returns IDs of unique data collections scenario runs in the collection"""
         return dict((x["_id"], {"time": x["sys_time"], "count": x["count"], "date": x["date_collected"]}) for x in
-                    self.collection.aggregate([{'$match': {'_ts_meta.session': {'$exists': True}}}, {
-                        '$group': {'_id': '$_ts_meta.session', 'sys_time': {'$first': '$_ts_meta.sys_time'},
-                                   'count': {'$sum': 1}, 'date_collected': {'$first': {
-                                '$dateFromParts': {'year': {'$year': '$_ts_meta.session'},
-                                                   'month': {'$month': '$_ts_meta.session'},
-                                                   'day': {'$dayOfMonth': '$_ts_meta.session'},
-                                                   'hour': {'$hour': '$_ts_meta.session'},
-                                                   'minute': {'$minute': '$_ts_meta.session'},
-                                                   'second': {'$second': '$_ts_meta.session'},
-                                                   'millisecond': {'$millisecond': '$_ts_meta.session'}}}}, }}]))
+                    self.collection.aggregate(
+                        [{'$project': {'_ts_meta': 1}}, {'$match': {'_ts_meta.session': {'$exists': True}}}, {
+                            '$group': {'_id': '$_ts_meta.session', 'sys_time': {'$first': '$_ts_meta.sys_time'},
+                                       'count': {'$sum': 1}, 'date_collected': {'$first': {
+                                    '$dateFromParts': {'year': {'$year': '$_ts_meta.session'},
+                                                       'month': {'$month': '$_ts_meta.session'},
+                                                       'day': {'$dayOfMonth': '$_ts_meta.session'},
+                                                       'hour': {'$hour': '$_ts_meta.session'},
+                                                       'minute': {'$minute': '$_ts_meta.session'},
+                                                       'second': {'$second': '$_ts_meta.session'},
+                                                       'millisecond': {'$millisecond': '$_ts_meta.session'}}}}}}]))
+
+    def get_unique_sessions_fast(self, count=True):
+        """Returns IDs of unique data collections scenario runs in the collection quickly"""
+        return {s: {
+            "time": time.mktime(s.generation_time.timetuple()),
+            "date": s.generation_time,
+            "count": self.collection.count_documents({"_ts_meta.session": s}) if count else 0
+        } for s in sorted(list(self.collection.distinct("_ts_meta.session")), key=lambda x: x.generation_time)}
 
     def delete_by_id(self, id_str, *args, **kwargs):
         """Deletes a document by id"""
@@ -315,4 +325,3 @@ class MongoServer:
         self.process.wait()
 
     __del__ = _on_shutdown
-
