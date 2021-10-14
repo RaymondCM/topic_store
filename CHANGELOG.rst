@@ -2,8 +2,8 @@
 Changelog for package topic_store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.8 (2021-10-14)
+------------------
 * Add much faster method of session filtering
 * Update default requirements
 * Bump version
