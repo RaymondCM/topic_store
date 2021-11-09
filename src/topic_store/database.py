@@ -240,7 +240,7 @@ class MongoStorage(Storage):
             session_id = bson.ObjectId(session_id)
         return self.find({"_ts_meta.session": session_id}, *args, **kwargs)
 
-    def get_unique_sessions(self):
+    def get_unique_sessions_legacy(self):
         """Returns IDs of unique data collections scenario runs in the collection"""
         return dict((x["_id"], {"time": x["sys_time"], "count": x["count"], "date": x["date_collected"]}) for x in
                     self.collection.aggregate(
@@ -255,7 +255,7 @@ class MongoStorage(Storage):
                                                        'second': {'$second': '$_ts_meta.session'},
                                                        'millisecond': {'$millisecond': '$_ts_meta.session'}}}}}}]))
 
-    def get_unique_sessions_fast(self, count=True):
+    def get_unique_sessions(self, count=True):
         """Returns IDs of unique data collections scenario runs in the collection quickly"""
         return {s: {
             "time": time.mktime(s.generation_time.timetuple()),
