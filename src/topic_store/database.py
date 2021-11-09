@@ -195,6 +195,16 @@ class MongoStorage(Storage):
                                 apply_fn=None if (skip_fetch_binary or not self._use_grid_fs) else self.__ungridfs_ify,
                                 skip_on_error=skip_on_error)
 
+    def aggregate(self, *args, **kwargs):
+        """Returns TopicStoreCursor to all documents in the query"""
+        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+
+        find_cursor = self.collection.aggregate(*args, **kwargs)
+
+        return TopicStoreCursor(find_cursor,
+                                apply_fn=None if (skip_fetch_binary or not self._use_grid_fs) else self.__ungridfs_ify,
+                                skip_on_error=skip_on_error)
+
     __iter__ = find
 
     def find_one(self, query, *args, **kwargs):
