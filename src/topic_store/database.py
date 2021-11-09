@@ -14,6 +14,8 @@ from copy import copy
 
 import pathlib
 
+from pymongo.command_cursor import CommandCursor
+
 from topic_store import get_package_root
 from topic_store.api import Storage
 from topic_store.data import TopicStore
@@ -299,6 +301,8 @@ class TopicStoreCursor:
             return document
 
     def __getitem__(self, item):
+        if isinstance(self.cursor, CommandCursor):
+            return self.__get(self.cursor.next())
         return self.__get(self.cursor.__getitem__(item))
 
     def next(self):
