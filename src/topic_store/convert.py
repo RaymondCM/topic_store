@@ -53,25 +53,25 @@ def get_mongo_storage_by_session(client, *args, **kwargs):
              enumerate(s_lut)])))
         while True:
             try:
+                raw_input = raw_input or input
                 char = raw_input("Please enter a number or enter for all: ")
                 if char is "":
                     return client.find(*args, **kwargs)
-                return client.find_by_session_id(s_lut[int(char)]["id"], *args, **kwargs)
+                return client.find_by_session_id(s_lut[int(char)]["id"], *args, **kwargs), s_lut[int(char)]["count"]
             except (EOFError, ValueError, IndexError):
                 print("Please choose an appropriate option")
                 continue
-    return client.find(*args, **kwargs)
+    return client.find(*args, **kwargs), -1
 
 
 def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, projection=None):
     print("Converting MongoDB '{}' to '{}'".format(mongodb_client.uri, topic_store_file.name))
 
     if query is None or not isinstance(query, dict):
-        storage = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
+        storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
         storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-
-    count = storage.cursor.count()
+        mongodb_client.collection.count_documents(query or {})
 
     topic_storage = TopicStorage(topic_store_file)
 
@@ -81,15 +81,36 @@ def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, project
             progress_bar.update()
 
 
+def mongodb_to_mongodb(mongodb_from, mongodb_to, query=None, projection=None):
+    print("Converting MongoDB '{}' to '{}'".format(mongodb_from.uri, mongodb_to.uri))
+
+    if query is None or not isinstance(query, dict):
+        storage, count = get_mongo_storage_by_session(mongodb_from, skip_on_error=True, projection=projection)
+    else:
+        storage = mongodb_from.find(query, skip_on_error=True, projection=projection)
+        count = mongodb_from.collection.count_documents(query or {})
+    skipped = []
+    with tqdm(total=count) as progress_bar:
+        for item in storage:
+            try:
+                mongodb_to.insert_one(item)
+            except pymongo.errors.DuplicateKeyError:
+                skipped.append(item.id)
+                print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, mongodb_to.name,
+                                                                                               mongodb_to.collection_name))
+            progress_bar.update()
+
+    print("Copied {} items, skipped {} items".format(count - len(skipped), len(skipped)))
+
+
 def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None):
     print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
     if query is None or not isinstance(query, dict):
-        storage = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
+        storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
         storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-
-    count = storage.cursor.count()
+        mongodb_client.collection.count_documents(query or {})
 
     ros_bag = rosbag.Bag(str(output_file), 'w')
 
@@ -136,6 +157,25 @@ def topic_store_to_ros_bag(topic_store_file, output_file):
         ros_bag.close()
 
 
+def is_uri(uri):
+    return isinstance(uri, str) and uri.startswith("mongodb://")
+
+
+def client_from_uri(uri, collection):
+    if is_uri(uri):
+        # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
+        db_name = None
+        if "authSource" in uri:
+            options = [s.split('=') for s in urlparse(uri).query.split("&") if s]
+            options = {k: v for k, v in options}
+            if "authSource" in options:
+                db_name = options["authSource"]
+        client = MongoStorage(collection=collection, uri=uri, db_name=db_name)
+        return client
+    else:
+        raise ValueError("Not a valid URI: {}".format(uri))
+
+
 def _convert_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", help="Input File", type=str, required=True)
@@ -171,17 +211,14 @@ def _convert_cli():
     elif input_path.suffix == TopicStorage.suffix and output_path.suffix == ".yaml":
         output_path = resolve_scenario_yaml(output_path)
         topic_store_to_mongodb(input_path, output_path)
-    elif input_path.suffix == output_path.suffix:
-        print("No conversion or migration for '{}' to '{}'".format(input_path, output_path))
-        print("If you would like to copy the file please use 'cp {} {}'".format(input_path, output_path))
-    elif isinstance(args.input, str) and "mongodb://" in args.input:
+    elif is_uri(args.input):
         srv = args.input
         collection = args.collection
         query = args.query
         projection = args.projection
 
-        if not hasattr(args, "query") or not args.query:
-            raise ValueError("If input is a MongoDB URI you must specify a DB query -q/--query to export data")
+        # if not hasattr(args, "query") or not args.query:
+        #     raise ValueError("If input is a MongoDB URI you must specify a DB query -q/--query to export data")
         if not hasattr(args, "collection") or not args.collection:
             raise ValueError("If input is a MongoDB URI you must specify a DB collection -c/--collection to query data")
 
@@ -196,26 +233,27 @@ def _convert_cli():
                 raise
 
         # Some simple rules to support searching by ID from console
-        for k, v in query.items():
-            if isinstance(v, (str, unicode)) and (v.startswith('ObjectId(') and v.endswith(')')):
-                print("Converting query field '{}' to ObjectId".format(k))
-                query[k] = ObjectId(str(v[9:-1]))
+        if query:
+            for k, v in query.items():
+                unicode = unicode or str
+                if isinstance(v, (str, unicode)) and (v.startswith('ObjectId(') and v.endswith(')')):
+                    print("Converting query field '{}' to ObjectId".format(k))
+                    query[k] = ObjectId(str(v[9:-1]))
 
-        # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
-        db_name = None
-        if "authSource" in srv:
-            options = [s.split('=') for s in urlparse(srv).query.split("&") if s]
-            options = {k: v for k, v in options}
-            if "authSource" in options:
-                db_name = options["authSource"]
-        client = MongoStorage(collection=collection, uri=srv, db_name=db_name)
+        client = client_from_uri(srv, collection=collection)
 
-        if output_path.suffix == ".bag":
+        if is_uri(args.output):
+            db2 = client_from_uri(args.output, collection=collection)
+            mongodb_to_mongodb(client, db2, query=query, projection=projection)
+        elif output_path.suffix == ".bag":
             mongodb_to_ros_bag(client, output_path, query=query, projection=projection)
         elif output_path.suffix == TopicStorage.suffix:
             mongodb_to_topic_store(client, output_path, query=query, projection=projection)
         else:
             raise ValueError("No valid conversion from Mongo URI '{}' to '{}' file".format(client.uri, output_path))
+    elif input_path.suffix == output_path.suffix:
+        print("No conversion or migration for '{}' to '{}'".format(input_path, output_path))
+        print("If you would like to copy the file please use 'cp {} {}'".format(input_path, output_path))
     else:
         print("No conversion or migration for '{}' to '{}'".format(input_path, output_path))
 
