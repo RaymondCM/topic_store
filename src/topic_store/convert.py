@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import json
+import sys
 import rospy
 import rosbag
 import pathlib
@@ -42,7 +43,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
 
 
 def get_mongo_storage_by_session(client, *args, **kwargs):
-    sessions = client.get_unique_sessions()
+    sessions = client.get_unique_sessions_legacy() if sys.version_info[0] == 2 else client.get_unique_sessions()
     if len(sessions) > 1:
         s_lut = sorted([{
             "id": sid, "on": datetime.fromtimestamp(data["time"]).strftime('%Y-%m-%d %H:%M:%S'),
@@ -71,7 +72,13 @@ def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, project
         storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
         storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-        mongodb_client.collection.count_documents(query or {})
+        try:
+            count = mongodb_client.collection.count_documents(query or {})
+        except TypeError:
+            count = storage.cursor.count()
+
+        except TypeError:
+            count = storage.cursor.count()
 
     topic_storage = TopicStorage(topic_store_file)
 
@@ -88,7 +95,12 @@ def mongodb_to_mongodb(mongodb_from, mongodb_to, query=None, projection=None):
         storage, count = get_mongo_storage_by_session(mongodb_from, skip_on_error=True, projection=projection)
     else:
         storage = mongodb_from.find(query, skip_on_error=True, projection=projection)
-        count = mongodb_from.collection.count_documents(query or {})
+        try:
+            count = mongodb_from.collection.count_documents(query or {})
+        except TypeError:
+            count = storage.cursor.count()
+
+    
     skipped = []
     with tqdm(total=count) as progress_bar:
         for item in storage:
@@ -110,7 +122,10 @@ def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None)
         storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
     else:
         storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-        mongodb_client.collection.count_documents(query or {})
+        try:
+            count = mongodb_client.collection.count_documents(query or {})
+        except TypeError:
+            count = storage.cursor.count()
 
     ros_bag = rosbag.Bag(str(output_file), 'w')
 
