@@ -68,7 +68,7 @@ def get_mongo_storage_by_session(client, *args, **kwargs):
                 continue
 
     query = kwargs.get("query", None) or args[0] if len(args) > 0 and isinstance(args[0], dict) else None
-    return client.find(*args, **kwargs), client.count(query, estimate=True)
+    return client.find(*args, **kwargs), client.count(query, estimate=not bool(query))
 
 
 def count_mongodb_items(storage, query=None, estimate=False):
@@ -85,7 +85,7 @@ def get_mongodb_storage(mongodb_client, query=None, projection=None):
                                                       projection=projection)
     else:
         storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-        count = mongodb_client.count(query, estimate=True)
+        count = mongodb_client.count(query, estimate=not bool(query))
     return storage, count
 
 
@@ -261,7 +261,10 @@ def _convert_cli():
         # Some simple rules to support searching by ID from console
         if query:
             for k, v in query.items():
-                unicode = unicode or str
+                try:
+                    unicode
+                except NameError:
+                    unicode = str
                 if isinstance(v, (str, unicode)) and (v.startswith('ObjectId(') and v.endswith(')')):
                     print("Converting query field '{}' to ObjectId".format(k))
                     query[k] = ObjectId(str(v[9:-1]))
