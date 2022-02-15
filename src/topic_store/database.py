@@ -238,7 +238,10 @@ class MongoStorage(Storage):
             if query:
                 raise ValueError("Cannot use estimate count of a queried collection, ensure either query is None or "
                                  "estimate is False")
-            return self.collection.estimated_document_count()
+            try:
+                return self.collection.estimated_document_count()
+            except TypeError:
+                pass
         return self.collection.count_documents(query or {})
 
     def find_by_id(self, id_str, *args, **kwargs):
