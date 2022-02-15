@@ -21,12 +21,12 @@ if __name__ == '__main__':
     extra_requirements_path = os.path.abspath(os.path.join(project_root, "extra_requirements.txt"))
     readme_path = os.path.abspath(os.path.join(project_root, "README.md"))
     if not os.path.exists(package_path):
-        raise IOError("Cannot find package.xml. If you're building from ROS please run in setup.py folder first: "
-                      + "\tcp .. / package.xml. /"
-                      + "\tcp .. / LICENCE. /"
-                      + "\tcp .. / docs / README.md. /"
-                      + "\tcp .. / CHANGELOG.rst. /"
-                      + "\tcp .. / requirements.txt. /")
+        raise IOError("Cannot find package.xml. If you're building from ROS please run in setup.py folder first: \n"
+                      + "\tcp ../package.xml ./"
+                      + "\tcp ../LICENCE ./"
+                      + "\tcp ../docs/README.md ./"
+                      + "\tcp ../CHANGELOG.rst ./"
+                      + "\tcp ../requirements.txt ./")
     package_xml = ET.parse(str(package_path)).getroot()
     version = package_xml.find("version").text
 

@@ -23,7 +23,12 @@ try:
 except ImportError:  # Py3
     from urllib.parse import urlparse
 
-from topic_store.database import MongoStorage
+try:
+    input = raw_input  # Py2
+except NameError:
+    pass
+
+from topic_store.database import MongoStorage, TopicStoreCursor
 from topic_store.filesystem import TopicStorage
 
 
@@ -43,7 +48,7 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
 
 
 def get_mongo_storage_by_session(client, *args, **kwargs):
-    sessions = client.get_unique_sessions_legacy() if sys.version_info[0] == 2 else client.get_unique_sessions()
+    sessions = client.get_unique_sessions()
     if len(sessions) > 1:
         s_lut = sorted([{
             "id": sid, "on": datetime.fromtimestamp(data["time"]).strftime('%Y-%m-%d %H:%M:%S'),
@@ -54,31 +59,40 @@ def get_mongo_storage_by_session(client, *args, **kwargs):
              enumerate(s_lut)])))
         while True:
             try:
-                raw_input = raw_input or input
-                char = raw_input("Please enter a number or enter for all: ")
+                char = input("Please enter a number or enter for all: ")
                 if char is "":
                     return client.find(*args, **kwargs)
                 return client.find_by_session_id(s_lut[int(char)]["id"], *args, **kwargs), s_lut[int(char)]["count"]
             except (EOFError, ValueError, IndexError):
                 print("Please choose an appropriate option")
                 continue
-    return client.find(*args, **kwargs), -1
+
+    query = kwargs.get("query", None) or args[0] if len(args) > 0 and isinstance(args[0], dict) else None
+    return client.find(*args, **kwargs), client.count(query, estimate=True)
+
+
+def count_mongodb_items(storage, query=None, estimate=False):
+    if isinstance(storage, TopicStoreCursor) and sys.version_info[0] == 2:
+        return storage.cursor.count()
+    if isinstance(storage, MongoStorage):
+        return storage.count(query, estimate=estimate)
+    raise TypeError("Unsupported storage type: {}".format(type(storage)))
+
+
+def get_mongodb_storage(mongodb_client, query=None, projection=None):
+    if query is None or not isinstance(query, dict):
+        storage, count = get_mongo_storage_by_session(mongodb_client, query, skip_on_error=True,
+                                                      projection=projection)
+    else:
+        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
+        count = mongodb_client.count(query, estimate=True)
+    return storage, count
 
 
 def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, projection=None):
     print("Converting MongoDB '{}' to '{}'".format(mongodb_client.uri, topic_store_file.name))
 
-    if query is None or not isinstance(query, dict):
-        storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
-    else:
-        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-        try:
-            count = mongodb_client.collection.count_documents(query or {})
-        except TypeError:
-            count = storage.cursor.count()
-
-        except TypeError:
-            count = storage.cursor.count()
+    storage, count = get_mongodb_storage(mongodb_client, query=query, projection=projection)
 
     topic_storage = TopicStorage(topic_store_file)
 
@@ -91,41 +105,38 @@ def mongodb_to_topic_store(mongodb_client, topic_store_file, query=None, project
 def mongodb_to_mongodb(mongodb_from, mongodb_to, query=None, projection=None):
     print("Converting MongoDB '{}' to '{}'".format(mongodb_from.uri, mongodb_to.uri))
 
-    if query is None or not isinstance(query, dict):
-        storage, count = get_mongo_storage_by_session(mongodb_from, skip_on_error=True, projection=projection)
-    else:
-        storage = mongodb_from.find(query, skip_on_error=True, projection=projection)
-        try:
-            count = mongodb_from.collection.count_documents(query or {})
-        except TypeError:
-            count = storage.cursor.count()
+    storage, count = get_mongodb_storage(mongodb_from, query=query, projection=projection)
+    database_name, collection_name = mongodb_to.name, mongodb_to.collection_name
 
-    
-    skipped = []
+    errors = {}
+
     with tqdm(total=count) as progress_bar:
         for item in storage:
             try:
                 mongodb_to.insert_one(item)
-            except pymongo.errors.DuplicateKeyError:
-                skipped.append(item.id)
-                print("Storage Item '_id: {}' already exists in the '{}/{}' collection".format(item.id, mongodb_to.name,
-                                                                                               mongodb_to.collection_name))
+            except Exception as e:
+                exception_name = type(e).__name__
+                if exception_name not in errors:
+                    errors[exception_name] = []
+                errors[exception_name].append(item.id)
+
+            if errors:
+                error_str = ", ".join("{} ({})".format(k, len(v)) for k, v in errors.items())
+                progress_bar.set_postfix_str(error_str)
             progress_bar.update()
 
-    print("Copied {} items, skipped {} items".format(count - len(skipped), len(skipped)))
+    skipped = sum(len(v) for v in errors.values())
+    print("Copied {} items, skipped {} items:".format(count - skipped, skipped))
+
+    for reason, ids in errors.items():
+        for object_id in ids:
+            print("\t- {} in '{}/{}', ObjectId('{}')".format(reason, database_name, collection_name, object_id))
 
 
 def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None):
     print("Converting MongoDB '{}' to ROS bag '{}'".format(mongodb_client.uri, output_file.name))
 
-    if query is None or not isinstance(query, dict):
-        storage, count = get_mongo_storage_by_session(mongodb_client, skip_on_error=True, projection=projection)
-    else:
-        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
-        try:
-            count = mongodb_client.collection.count_documents(query or {})
-        except TypeError:
-            count = storage.cursor.count()
+    storage, count = get_mongodb_storage(mongodb_client, query=query, projection=projection)
 
     ros_bag = rosbag.Bag(str(output_file), 'w')
 
