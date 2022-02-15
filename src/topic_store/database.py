@@ -5,6 +5,8 @@
 
 from __future__ import absolute_import, division, print_function
 
+import sys
+
 import rospkg
 import bson
 import time
@@ -230,6 +232,15 @@ class MongoStorage(Storage):
             )
             return doc
 
+    def count(self, query=None, estimate=True):
+        """Returns the number of documents in the collection"""
+        if estimate:
+            if query:
+                raise ValueError("Cannot use estimate count of a queried collection, ensure either query is None or "
+                                 "estimate is False")
+            return self.collection.estimated_document_count()
+        return self.collection.count_documents(query or {})
+
     def find_by_id(self, id_str, *args, **kwargs):
         """Returns a matched TopicStore document"""
         return self.find_one({"_id": id_str}, *args, **kwargs)
@@ -257,6 +268,8 @@ class MongoStorage(Storage):
 
     def get_unique_sessions(self, count=True):
         """Returns IDs of unique data collections scenario runs in the collection quickly"""
+        if sys.version_info[0] == 2:
+            return self.get_unique_sessions_legacy()
         return {s: {
             "time": time.mktime(s.generation_time.timetuple()),
             "date": s.generation_time,
