@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kirk"
+  given-names: "Raymond"
+  orcid: "https://orcid.org/0000-0001-5118-9358"
+title: "topic_store"
+version: 1.0.0
+date-released: 2020-01-01
+url: "https://github.com/RaymondKirk/topic_store"
