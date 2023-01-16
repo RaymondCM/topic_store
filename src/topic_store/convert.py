@@ -192,8 +192,8 @@ def client_from_uri(uri, collection):
         # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
         db_name = None
         if "authSource" in uri:
-            options = [s.split('=') for s in urlparse(uri).query.split("&") if s]
-            options = {k: v for k, v in options}
+            # get options from URI
+            options = dict([x.split("=") for x in uri.split("?")[1].split("&")])
             if "authSource" in options:
                 db_name = options["authSource"]
         client = MongoStorage(collection=collection, uri=uri, db_name=db_name)
