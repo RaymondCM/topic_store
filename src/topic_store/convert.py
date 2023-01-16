@@ -202,6 +202,14 @@ def client_from_uri(uri, collection):
         raise ValueError("Not a valid URI: {}".format(uri))
 
 
+def private_srv(srv):
+    original_type = type(srv)
+    srv = str(srv)
+    if ":" in srv and "@" in srv:
+        srv = f"mongodb://****:****@" + srv.split("@")[1]
+    return original_type(srv)
+
+
 def _convert_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", help="Input File", type=str, required=True)
