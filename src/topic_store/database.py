@@ -5,18 +5,14 @@
 
 from __future__ import absolute_import, division, print_function
 
+import pathlib
 import sys
-from typing import Iterable, Mapping
-
-import rospkg
-import bson
 import time
-import gridfs
-import pymongo
 from copy import copy
 
-import pathlib
-
+import bson
+import gridfs
+import pymongo
 from pymongo.command_cursor import CommandCursor
 
 from topic_store import get_package_root
