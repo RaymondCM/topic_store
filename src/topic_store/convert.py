@@ -128,9 +128,58 @@ def mongodb_to_mongodb(mongodb_from, mongodb_to, query=None, projection=None):
     skipped = sum(len(v) for v in errors.values())
     print("Copied {} items, skipped {} items:".format(count - skipped, skipped))
 
-    for reason, ids in errors.items():
-        for object_id in ids:
-            print("\t- {} in '{}/{}', ObjectId('{}')".format(reason, database_name, collection_name, object_id))
+def mongodb_to_mongodb_clone_fast(mongodb_from, mongodb_to, query=None, projection=None):
+    print("Converting MongoDB '{}' to '{}'".format(private_srv(mongodb_from.uri), private_srv(mongodb_to.uri)))
+    id_only_projection = projection or {"_id": 1}
+    fast_id_only_kwargs = dict(projection=id_only_projection, include_ts_meta=False, sort=[("_id", 1)], raw_cursor=True)
+    existing_ids = set(x["_id"] for x in mongodb_to.find({}, **fast_id_only_kwargs))
+
+    # Create query for only IDs but not ids that already exist
+    id_only_query = {"_id": {"$nin": list(existing_ids)}}
+    query_mb = sys.getsizeof(json.dumps(id_only_query, default=str)) / 1024 / 1024
+    if query_mb >= 15:
+        print("Query is {}MB, this is too large to be sent to the server, defaulting to naive query".format(query_mb))
+        id_only_query = {}
+
+    fast_id_only_kwargs = dict(projection=id_only_projection, include_ts_meta=False, sort=[("_id", -1)], raw_cursor=True)
+    storage = mongodb_from.find(id_only_query, **fast_id_only_kwargs)
+    count = mongodb_from.count(id_only_query, estimate=not bool(id_only_query))
+
+    errors = {"DuplicateKeyError": list(existing_ids)}
+    postfix = lambda x, y: f"{x + ' - ' if x else ''}{'Errors: ' + y if y else ''}"
+
+    with tqdm(total=count) as progress_bar:
+        for item in storage:
+            neg_str = ", ".join("{} ({})".format(k, len(v)) for k, v in errors.items()) if errors else ""
+            item_id = item["_id"]
+            if item_id not in existing_ids:
+                try:
+                    pos_str = f"Retrieving {item_id}"
+                    progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                    full_item = mongodb_from.find_by_id(item_id)
+                    pos_str = f"Inserting {item_id}"
+                    progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                    mongodb_to.insert_one(full_item)
+                except Exception as e:
+                    pos_str = ""
+                    exception_name = type(e).__name__
+                    if exception_name not in errors:
+                        errors[exception_name] = []
+                    errors[exception_name].append(item_id)
+            else:
+                exception_name = "DuplicateKeyError"
+                if exception_name not in errors:
+                    errors[exception_name] = []
+                pos_str = f"Skipping {item_id}"
+                progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                errors[exception_name].append(item_id)
+
+            neg_str = ", ".join("{} ({})".format(k, len(v)) for k, v in errors.items()) if errors else ""
+            progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+            progress_bar.update()
+
+    skipped = sum(len(v) for v in errors.values())
+    print("Copied {} items, skipped {} items:".format(count - skipped, skipped))
 
 
 def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None):
