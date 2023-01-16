@@ -79,12 +79,12 @@ def count_mongodb_items(storage, query=None, estimate=False):
     raise TypeError("Unsupported storage type: {}".format(type(storage)))
 
 
-def get_mongodb_storage(mongodb_client, query=None, projection=None):
+def get_mongodb_storage(mongodb_client, query=None, projection=None, **kwargs):
     if query is None or not isinstance(query, dict):
         storage, count = get_mongo_storage_by_session(mongodb_client, query, skip_on_error=True,
                                                       projection=projection)
     else:
-        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
+        storage = mongodb_client.find(query, skip_on_error=True, projection=projection, **kwargs)
         count = mongodb_client.count(query, estimate=not bool(query))
     return storage, count
 
@@ -128,9 +128,58 @@ def mongodb_to_mongodb(mongodb_from, mongodb_to, query=None, projection=None):
     skipped = sum(len(v) for v in errors.values())
     print("Copied {} items, skipped {} items:".format(count - skipped, skipped))
 
-    for reason, ids in errors.items():
-        for object_id in ids:
-            print("\t- {} in '{}/{}', ObjectId('{}')".format(reason, database_name, collection_name, object_id))
+def mongodb_to_mongodb_clone_fast(mongodb_from, mongodb_to, query=None, projection=None):
+    print("Converting MongoDB '{}' to '{}'".format(private_srv(mongodb_from.uri), private_srv(mongodb_to.uri)))
+    id_only_projection = projection or {"_id": 1}
+    fast_id_only_kwargs = dict(projection=id_only_projection, include_ts_meta=False, sort=[("_id", 1)], raw_cursor=True)
+    existing_ids = set(x["_id"] for x in mongodb_to.find({}, **fast_id_only_kwargs))
+
+    # Create query for only IDs but not ids that already exist
+    id_only_query = {"_id": {"$nin": list(existing_ids)}}
+    query_mb = sys.getsizeof(json.dumps(id_only_query, default=str)) / 1024 / 1024
+    if query_mb >= 15:
+        print("Query is {}MB, this is too large to be sent to the server, defaulting to naive query".format(query_mb))
+        id_only_query = {}
+
+    fast_id_only_kwargs = dict(projection=id_only_projection, include_ts_meta=False, sort=[("_id", -1)], raw_cursor=True)
+    storage = mongodb_from.find(id_only_query, **fast_id_only_kwargs)
+    count = mongodb_from.count(id_only_query, estimate=not bool(id_only_query))
+
+    errors = {"DuplicateKeyError": list(existing_ids)}
+    postfix = lambda x, y: f"{x + ' - ' if x else ''}{'Errors: ' + y if y else ''}"
+
+    with tqdm(total=count) as progress_bar:
+        for item in storage:
+            neg_str = ", ".join("{} ({})".format(k, len(v)) for k, v in errors.items()) if errors else ""
+            item_id = item["_id"]
+            if item_id not in existing_ids:
+                try:
+                    pos_str = f"Retrieving {item_id}"
+                    progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                    full_item = mongodb_from.find_by_id(item_id)
+                    pos_str = f"Inserting {item_id}"
+                    progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                    mongodb_to.insert_one(full_item)
+                except Exception as e:
+                    pos_str = ""
+                    exception_name = type(e).__name__
+                    if exception_name not in errors:
+                        errors[exception_name] = []
+                    errors[exception_name].append(item_id)
+            else:
+                exception_name = "DuplicateKeyError"
+                if exception_name not in errors:
+                    errors[exception_name] = []
+                pos_str = f"Skipping {item_id}"
+                progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+                errors[exception_name].append(item_id)
+
+            neg_str = ", ".join("{} ({})".format(k, len(v)) for k, v in errors.items()) if errors else ""
+            progress_bar.set_postfix_str(postfix(pos_str, neg_str))
+            progress_bar.update()
+
+    skipped = sum(len(v) for v in errors.values())
+    print("Copied {} items, skipped {} items:".format(count - skipped, skipped))
 
 
 def mongodb_to_ros_bag(mongodb_client, output_file, query=None, projection=None):
@@ -192,14 +241,22 @@ def client_from_uri(uri, collection):
         # DB name will usually be specified as authSource in the URI, if not present use default=topic_store
         db_name = None
         if "authSource" in uri:
-            options = [s.split('=') for s in urlparse(uri).query.split("&") if s]
-            options = {k: v for k, v in options}
+            # get options from URI
+            options = dict([x.split("=") for x in uri.split("?")[1].split("&")])
             if "authSource" in options:
                 db_name = options["authSource"]
         client = MongoStorage(collection=collection, uri=uri, db_name=db_name)
         return client
     else:
         raise ValueError("Not a valid URI: {}".format(uri))
+
+
+def private_srv(srv):
+    original_type = type(srv)
+    srv = str(srv)
+    if ":" in srv and "@" in srv:
+        srv = f"mongodb://****:****@" + srv.split("@")[1]
+    return original_type(srv)
 
 
 def _convert_cli():

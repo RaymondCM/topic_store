@@ -5,17 +5,14 @@
 
 from __future__ import absolute_import, division, print_function
 
+import pathlib
 import sys
-
-import rospkg
-import bson
 import time
-import gridfs
-import pymongo
 from copy import copy
 
-import pathlib
-
+import bson
+import gridfs
+import pymongo
 from pymongo.command_cursor import CommandCursor
 
 from topic_store import get_package_root
@@ -102,18 +99,22 @@ class MongoStorage(Storage):
         return MongoStorage(config=scenario.storage["config"], collection=scenario.context)
 
     def __apply_fn_to_nested_dict(self, original_dict, iter_dict=None, fn=None):
+        data_dict = copy(original_dict)
         if iter_dict is None:
-            iter_dict = copy(original_dict)
+            iter_dict = copy(data_dict)
         for k, v in iter_dict.items():
             if isinstance(v, MappingType):
-                original_dict[k] = self.__apply_fn_to_nested_dict(original_dict.get(k, {}), v, fn)
+                try:
+                    data_dict[k] = self.__apply_fn_to_nested_dict(data_dict.get(k, {}), v, fn)
+                except RuntimeError:
+                    pass
             else:
                 fk, fv = k, v
                 if fn is not None:
                     fk, fv = fn(k, v)
-                original_dict[k] = fv
-                original_dict[fk] = original_dict.pop(k)
-        return original_dict
+                data_dict[k] = fv
+                data_dict[fk] = data_dict.pop(k)
+        return data_dict
 
     def __gridfs_ify(self, topic_store):
         """Places all bson.binary.Binary types in the gridfs files/storage system so no limit on 16MB documents"""
@@ -172,26 +173,31 @@ class MongoStorage(Storage):
         # Allow the user to not auto fetch blob data
         skip_fetch_binary = kwargs.pop("skip_fetch_binary", False)
         skip_on_error = kwargs.pop("skip_on_error", False)
+        include_ts_meta = kwargs.pop("include_ts_meta", True)
+        raw_cursor = kwargs.pop("raw_cursor", False)
 
         # If projections exist we must append _ts_meta to it to reconstruct the original object
-        if len(args) >= 2 and isinstance(args[1], dict):
+        if include_ts_meta and len(args) >= 2 and isinstance(args[1], dict):
             if all(x == 1 for x in args[1].values()):
                 args[1]["_ts_meta"] = 1  # Force _ts_meta always if projection is an inclusion rule
             if "_ts_meta" in args[1] and args[1]["_ts_meta"] == 0:  # Don't allow the user to exclude _ts_meta
                 args[1].pop("_ts_meta")
-        if isinstance(kwargs, dict) and isinstance(kwargs.get("projection"), dict):
+        if include_ts_meta and isinstance(kwargs, dict) and isinstance(kwargs.get("projection"), dict):
             if all(x == 1 for x in kwargs["projection"].values()):
                 kwargs["projection"]["_ts_meta"] = 1
             if "_ts_meta" in kwargs["projection"] and kwargs["projection"]["_ts_meta"] == 0:
                 kwargs["projection"].pop("_ts_meta")
 
-        return skip_fetch_binary, skip_on_error, args, kwargs
+        return skip_fetch_binary, skip_on_error, raw_cursor, args, kwargs
 
     def find(self, *args, **kwargs):
         """Returns TopicStoreCursor to all documents in the query"""
-        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+        skip_fetch_binary, skip_on_error, raw_cursor, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
 
         find_cursor = self.collection.find(*args, **kwargs)
+
+        if raw_cursor:
+            return find_cursor
 
         return TopicStoreCursor(find_cursor,
                                 apply_fn=None if (skip_fetch_binary or not self._use_grid_fs) else self.__ungridfs_ify,
@@ -199,38 +205,18 @@ class MongoStorage(Storage):
 
     def aggregate(self, *args, **kwargs):
         """Returns TopicStoreCursor to all documents in the query"""
-        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
+        skip_fetch_binary, skip_on_error, raw_cursor, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
 
         find_cursor = self.collection.aggregate(*args, **kwargs)
+
+        if raw_cursor:
+            return find_cursor
 
         return TopicStoreCursor(find_cursor,
                                 apply_fn=None if (skip_fetch_binary or not self._use_grid_fs) else self.__ungridfs_ify,
                                 skip_on_error=skip_on_error)
 
     __iter__ = find
-
-    def find_one(self, query, *args, **kwargs):
-        """Returns a matched TopicStore document"""
-        # TODO: remove FIND_ONE function in place of generic find function
-        skip_fetch_binary, skip_on_error, args, kwargs = self.__parse_find_args_kwargs(args, kwargs)
-
-        doc = None
-        try:
-            doc = self.collection.find_one(query, *args, **kwargs)
-            if not doc:  # Return if doc not found
-                return doc
-
-            parsed_document = self.reverse_parser(doc)
-            if not skip_fetch_binary and self._use_grid_fs:
-                parsed_document = self.__ungridfs_ify(parsed_document)
-            return TopicStore(parsed_document)
-        except Exception as e:
-            if not skip_on_error:
-                raise
-            print("Skipping document '{}' because '{}'".format(
-                (doc.get('id') + " ") if doc else None, e.message)
-            )
-            return doc
 
     def count(self, query=None, estimate=True):
         """Returns the number of documents in the collection"""
@@ -246,7 +232,7 @@ class MongoStorage(Storage):
 
     def find_by_id(self, id_str, *args, **kwargs):
         """Returns a matched TopicStore document"""
-        return self.find_one({"_id": id_str}, *args, **kwargs)
+        return next(self.find({"_id": id_str}, *args, limit=1, **kwargs))
 
     def find_by_session_id(self, session_id, *args, **kwargs):
         """Returns matched TopicStore documents collected in the same session"""
