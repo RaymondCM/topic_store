@@ -79,12 +79,12 @@ def count_mongodb_items(storage, query=None, estimate=False):
     raise TypeError("Unsupported storage type: {}".format(type(storage)))
 
 
-def get_mongodb_storage(mongodb_client, query=None, projection=None):
+def get_mongodb_storage(mongodb_client, query=None, projection=None, **kwargs):
     if query is None or not isinstance(query, dict):
         storage, count = get_mongo_storage_by_session(mongodb_client, query, skip_on_error=True,
                                                       projection=projection)
     else:
-        storage = mongodb_client.find(query, skip_on_error=True, projection=projection)
+        storage = mongodb_client.find(query, skip_on_error=True, projection=projection, **kwargs)
         count = mongodb_client.count(query, estimate=not bool(query))
     return storage, count
 
