@@ -22,5 +22,5 @@ function parse_yaml() {
     prefix_str=${2:-""}
     sep_str=${3:-"_"}
     require_db=${4:-""}
-    python -c "$_get_yaml_python" "${file_path}" "${prefix_str}" "${sep_str}" "${require_db}"
+    python3 -c "$_get_yaml_python" "${file_path}" "${prefix_str}" "${sep_str}" "${require_db}"
 }

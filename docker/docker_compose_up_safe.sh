@@ -101,13 +101,13 @@ fi
 
 # Function to stop the database on exit sig_(exit int term)
 function cleanup {
-    docker-compose down
+    docker compose down
     exit 0
 }
 trap cleanup INT TERM EXIT
 
 # Bring container down if already up (avoid corruption)
-docker-compose down
+docker compose down
 
 # Try to launch docker with user UID:GID
 TS_UID_GID=1000:1000
@@ -123,4 +123,4 @@ fi
 export TS_UID_GID=$TS_UID_GID
 
 # Bring container up and block execution
-docker-compose up
+docker compose up
