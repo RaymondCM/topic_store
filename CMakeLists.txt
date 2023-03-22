@@ -68,10 +68,11 @@ file(GLOB python_scripts_DIR "scripts/*.py")
 file(GLOB docker_scripts_DIR "docker/*")
 
 catkin_install_python(
-    PROGRAMS ${python_src_DIR} ${python_scripts_DIR} ${docker_scripts_DIR}
+    PROGRAMS ${python_src_DIR} ${python_scripts_DIR} #${docker_scripts_DIR}
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+install(DIRECTORY "docker" DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 # ==============================================
 # Tests
 # ==============================================

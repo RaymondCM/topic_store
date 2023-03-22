@@ -10,7 +10,7 @@ version: "3.7"
 services:
   mongodb:
     container_name: ts_mongodb_server
-    image: "mongo:4.2"
+    image: "mongo:5.0"
     ports:
       - ${MONGO_net_port}:${MONGO_net_port} # Bind the docker IP to the same local IP
     volumes:
