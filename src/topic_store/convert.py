@@ -47,8 +47,9 @@ def topic_store_to_mongodb(topic_store_file, scenario_file):
             progress_bar.update()
 
 
-def get_mongo_storage_by_session(client, *args, **kwargs):
+def get_mongo_storage_by_session(client, query, *args, **kwargs):
     sessions = client.get_unique_sessions()
+
     if len(sessions) > 1:
         s_lut = sorted([{
             "id": sid, "on": datetime.fromtimestamp(data["time"]).strftime('%Y-%m-%d %H:%M:%S'),
@@ -67,7 +68,6 @@ def get_mongo_storage_by_session(client, *args, **kwargs):
                 print("Please choose an appropriate option")
                 continue
 
-    query = kwargs.get("query", None) or args[0] if len(args) > 0 and isinstance(args[0], dict) else None
     return client.find(*args, **kwargs), client.count(query, estimate=not bool(query))
 
 
